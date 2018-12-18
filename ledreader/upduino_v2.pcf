@@ -1,0 +1,43 @@
+set_io LED_R	41
+set_io LED_G	39
+set_io LED_B	40
+
+set_io SPI_C_0    2
+set_io SPI_D_0    46
+
+set_io SPI_C_1    47
+set_io SPI_D_1    45
+
+set_io SPI_C_2    48
+set_io SPI_D_2    3
+
+set_io SPI_C_3    4
+set_io SPI_D_3    44
+
+set_io SPI_C_4    6
+set_io SPI_D_4    9
+
+set_io SPI_C_5    11
+set_io SPI_D_5    18
+
+set_io SPI_C_6    19
+set_io SPI_D_6    13
+
+set_io SPI_C_7    21
+set_io SPI_D_7    12
+
+set_io WS2812_IN_0      28
+
+set_io DEBUG_0  38
+set_io DEBUG_1  42
+set_io DEBUG_2  36
+set_io DEBUG_3  43
+set_io DEBUG_4  34
+set_io DEBUG_5  37
+set_io DEBUG_6  31
+set_io DEBUG_7  35
+set_io DEBUG_8  32
+set_io DEBUG_9  27
+set_io DEBUG_10  26
+set_io DEBUG_11  25
+set_io DEBUG_12  23
