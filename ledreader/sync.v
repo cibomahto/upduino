@@ -1,3 +1,7 @@
+// Sycnronize a signal to a new clock domain using dual flip flops
+
+// Inspired by:
+// https://verificationacademy.com/forums/systemverilog/combinationally-sampling-input-clocking-block
 module sync_ss(
     input clk,
     input reset,
