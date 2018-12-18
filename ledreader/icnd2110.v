@@ -1,10 +1,27 @@
-parameter MAX_BYTES = (3*4*4);
-parameter BUFFER_BITS = (8);
+/*
+// Example module for an easy-to-seperate dual port ram block:
+module test (
+        input clk, wen, ren, 
+        input [7:0] waddr, raddr,
+        input [31:0] wdata,
+        output reg [31:0] rdata
+);
+        reg [31:0] mem [0:255];
+        always @(posedge clk) begin
+                if (wen)
+                        mem[waddr] <= wdata;
+                if (ren)
+                        rdata <= mem[raddr];
+        end
+endmodule
+*/
+
+parameter BUFFER_WIDTH = (9);
 
 module icnd2110(
     input clk,
     input rst,
-    input [BUFFER_BITS:0] bytecount,
+    input [BUFFER_WIDTH:0] bytecount,
     input cfg_pwm_wider,        // Enhancement for low gray (1=enable)
     input cfg_up,               // Ghosting reduction (1=enable)
 
@@ -18,7 +35,7 @@ module icnd2110(
 );
 
     // Big memory for LED data
-    reg [7:0] ledBuffer [MAX_BYTES:0];
+    reg [7:0] ledBuffer [(1<<BUFFER_WIDTH)-1:0];
     initial begin
         $readmemh("red.list", ledBuffer);
     end
@@ -32,11 +49,11 @@ module icnd2110(
 
     reg [10:0] counter;  // 8-bit step counter
 
-    reg [BUFFER_BITS:0] byte;   // Current byte, but it is offset from 0..11
+    reg [BUFFER_WIDTH:0] readindex;   // Current byte, but it is offset from 0..11
+    reg [2:0] subchip_byte;  // Counter from 0..5
 
     reg [7:0] val;              // 8-bit output value from memory
 
-//    wire [15:0] correction;     // 16-bit corrected output value
     reg [15:0] correction;
 
     reg data;                   // state of the SPI data output pin
@@ -52,7 +69,7 @@ module icnd2110(
     reg [1:0] in_state;
     reg [12:0] in_counter;
 
-    reg [BUFFER_BITS:0] in_byteindex;
+    reg [BUFFER_WIDTH:0] in_byteindex;
     reg [7:0] in_byte;
     reg [2:0] in_bitindex;
     reg in_bit_debug;
@@ -168,7 +185,8 @@ module icnd2110(
                     state <= 1;
                     counter <= 0;
 
-                    byte <= 0;
+                    readindex <= 5;
+                    subchip_byte <= 0;
                 end
             // 1. start (128 bits of 1)
             1:
@@ -211,6 +229,20 @@ module icnd2110(
                     if(counter == 15) begin
                         state <= state + 1;
                         counter <= 0;
+
+                        // Preload the first byte
+                        val <= ledBuffer[readindex];
+
+                        // Count in sequence:
+                        // 5,4,3,2,1,0,11,10,9,8,7,6,15,14,13,12,11, ...
+                        if(subchip_byte == 5) begin
+                            subchip_byte <= 0;
+                            readindex <= readindex + 11;
+                        end
+                        else begin
+                            subchip_byte <= subchip_byte + 1;
+                            readindex <= readindex - 1;
+                        end
                     end
                 end
 
@@ -224,17 +256,20 @@ module icnd2110(
                     // counter[6:4] is output (5-0) if in state 5, or output (11-6) if in state 7.
                     counter <= counter + 1;
 
-                    if(state == 5) begin
-//                        correction <= lut16[ledBuffer[byte + 5 - counter[6:4]]];
+                    data <= lut16[val][15 - counter[3:0]];
 
-                        data <= lut16[ledBuffer[byte + 5 - counter[6:4]]][15 - counter[3:0]];
+                    if(counter[3:0] == 15) begin
+                        val <= ledBuffer[readindex];
+
+                        if(subchip_byte == 5) begin
+                            subchip_byte <= 0;
+                            readindex <= readindex + 11;
+                        end
+                        else begin
+                            subchip_byte <= subchip_byte + 1;
+                            readindex <= readindex - 1;
+                        end
                     end
-                    else begin
-                        data <= lut16[ledBuffer[byte + 11 - counter[6:4]]][15 - counter[3:0]];
-                    end
-
-                    //data <= correction[15 - counter[3:0]];
-
 
                     if(counter == (16*6-1)) begin
                         counter <= 0;
@@ -243,9 +278,7 @@ module icnd2110(
                             state <= state + 1;
                         end
                         else begin
-                            byte <= byte + 12;   // 12 input bytes per chip
-
-                            if(byte < bytecount)
+                            if(readindex < bytecount)
                                 state <= 4;
                             else
                                 state <= state + 1;
@@ -253,7 +286,7 @@ module icnd2110(
                     end
                 end
 
-            // 6.  blank 
+            // 6.  blank
             // 7.  chip x, out11-out6 (16 x 6 bits)
             // 8.  blank
             // 9. frame end (145 bits of 1)
@@ -264,7 +297,6 @@ module icnd2110(
                     counter <= counter +1;
                     
                     if(counter == 144) begin
-//                        state <= state + 1;
                         state <= 0;
                         counter <= 0;
                     end

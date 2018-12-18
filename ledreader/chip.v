@@ -1,5 +1,5 @@
 
-parameter BYTECOUNT = (3*4*6);
+parameter BYTECOUNT = (112*3);
 
 module chip (
         input   WS2812_IN_0,
