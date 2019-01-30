@@ -1,0 +1,26 @@
+set_io LED_R	41
+set_io LED_B	39
+set_io LED_G	40
+
+set_io D        47
+set_io C        46
+set_io B        2
+set_io A        45
+set_io GCLK     48
+set_io LE       3
+set_io DCLK     4
+set_io SDI      44
+
+set_io DEBUG_0  38
+set_io DEBUG_1  42
+set_io DEBUG_2  36
+set_io DEBUG_3  43
+set_io DEBUG_4  34
+set_io DEBUG_5  37
+set_io DEBUG_6  31
+set_io DEBUG_7  35
+set_io DEBUG_8  32
+set_io DEBUG_9  27
+set_io DEBUG_10  26
+set_io DEBUG_11  25
+set_io DEBUG_12  23
