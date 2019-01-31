@@ -13,7 +13,7 @@ module matrix(
 );
 
     reg [4:0] state;            // State machine
-    reg [15:0] counter;         // Counter for the state machine
+    reg [20:0] counter;         // Counter for the state machine
 
     reg [3:0] rowAddress;       // Current row address (0-15)
     reg [7:0] gclockCounter;    // Counter to synchronize row address with gclock
@@ -22,7 +22,11 @@ module matrix(
     reg clock;
     reg latch;
 
-    reg [16:0] value;            // Output value
+    reg [15:0] value;            // Output value
+
+    wire [7:0] valueBrightness = value[8:1];   // Current brightness
+    wire [3:0] valueStep = value[12:9];        // Current row/col
+    
 
     assign a = rowAddress[3];
     assign b = rowAddress[2];
@@ -34,8 +38,10 @@ module matrix(
     assign sdi = data;
     assign dclk = clock;
 
-    wire [3:0] counterBit = counter[4:1];
-    wire [7:0] counterLED = counter[12:5];
+    wire [3:0] counterRow = counter[16:13];     // Current row
+    wire [3:0] counterCol = counter[12:9];      // Current column
+    wire [3:0] counterBoard = counter[8:5];     // Current board
+    wire [3:0] counterBit = counter[4:1];       // Current bit of current LED
 
     wire [15:0] correction;
 
@@ -44,8 +50,9 @@ module matrix(
         $readmemh("lut16.list", lut16);
     end
     
-    assign correction = lut16[value[11:4]];
+    assign correction = lut16[valueBrightness];
 
+    localparam BOARDS = 16;
 
     localparam PREACTIVATE_CLOCKS = 14;
     localparam ENABLE_OUTPUTS_CLOCKS = 12;
@@ -123,10 +130,10 @@ module matrix(
 
                 data <= CONFIG_REG_1_DATA[15-counterBit];
 
-                if(counter > (15-CONFIG_REG_1_LATCHES)*2+1)
+                if(counter > (16*BOARDS - CONFIG_REG_1_LATCHES)*2 - 1)
                     latch <= 1;
 
-                if(counter == 31) begin
+                if(counter == (32*BOARDS - 1)) begin
                     state <= state + 1;
                     counter <= 0;
                 end
@@ -142,10 +149,10 @@ module matrix(
 
                 data <= CONFIG_REG_2_DATA[15-counterBit];
 
-                if(counter > (15-CONFIG_REG_2_LATCHES)*2+1)
+                if(counter > (16*BOARDS - CONFIG_REG_2_LATCHES)*2 - 1)
                     latch <= 1;
 
-                if(counter == 31) begin
+                if(counter == (32*BOARDS-1)) begin
                     state <= state + 1;
                     counter <= 0;
                 end
@@ -178,15 +185,14 @@ module matrix(
                 clock <= counter[0];
 
                 // TODO: Send data from memory
-                //if((counterLED > 15) && (counterLED < 32))
-                if((value[15:12] == counterLED[3:0])
-                    || (value[15:12] == counterLED[7:4]))
+                if((valueStep == counterRow)
+                    || (valueStep == counterCol))
                     data <= correction[15-counterBit];
 
-                if(counterBit == 15)
+                if((counterBoard == 15) && (counterBit == 15))
                     latch <= 1;
 
-                if(counter == (16*16*16*2)) begin
+                if(counter == (BOARDS*16*16*16*2 - 1)) begin
                     state <= state + 1;
                     counter <= 0;
                 end
