@@ -5,89 +5,90 @@ module spireader(
     input cin,
     output dout,
     output cout,
-    output [15:0] v0,
-    output [15:0] v1,
-    output [15:0] v2,
-    output [15:0] v3,
-    output [15:0] v4,
-    output [15:0] v5,
-    output [15:0] v6,
-    output [15:0] v7
+
+    // Safe to consume from system clock domain:
+    output [15:0] data,         // Data frame
+    output [2:0] address,       // Address to write data frame
+    output readStrobe            // Asserts for 1 system clock cycle when new data is ready
 );
-    reg [16:0] timeoutCount;
 
-    reg [15:0] values [7:0];
-    initial begin
-        $readmemh("values.list", values);
-    end
+    reg [15:0] readBuffer;      // Buffer to read into (in CIN clock domain)
+    reg readStrobe_flag;         // Toggle signal for read (in CIN clock domain)
 
-    wire         din_sync;
-    wire         cin_sync;
-    sync_ss din_sync_ss(clock, reset, din, din_sync);
-    sync_ss cin_sync_ss(clock, reset, cin, cin_sync);
+    reg [15:0] outputBuffer;    // Buffered value, for reading across clock domain
+    reg [2:0] outputAddress;    // Buffered address value, for reading across clock domain
+    wire readStrobeSync;        // readStrobe syncronzied to system clock domain
+    reg readStrobeSyncPrev;    // Value of readStrobe on previous system clock
+    sync_ss din_sync_ss(clock, reset, readStrobe_flag, readStrobeSync);   // Synchronize readStrobe to system clock
 
-    assign v0 = values[0];
-    assign v1 = values[1];
-    assign v2 = values[2];
-    assign v3 = values[3];
-    assign v4 = values[4];
-    assign v5 = values[5];
-    assign v6 = values[6];
-    assign v7 = values[7];
+    assign readStrobe = (readStrobeSync != readStrobeSyncPrev);
 
-    reg dout_reg;
-    reg cout_reg;
+    reg [12:0] timeoutCounter;  // We want a timeout in the range of a few hundred uS.
+    reg timeout;
 
-    assign dout = dout_reg;
-    assign cout = cout_reg;
+    assign data = outputBuffer;
+    assign address = outputAddress;
+
+    // TODO
+    assign dout = readStrobe;
+    assign cout = (outputAddress == 0);
 
     reg [5:0] bitIndex;
-    reg [3:0] wordIndex;
+    initial bitIndex = 15;
 
-    reg cin_sync_prev;
+    reg timeoutPrev;
+
+    always @(posedge cin)
+    begin
+        if(reset) begin
+            bitIndex <= 15;
+            outputAddress <= 7;
+        end
+        else begin
+            timeoutPrev <= timeout;
+
+            bitIndex <= bitIndex - 1;
+
+            readBuffer[bitIndex] <= din;
+
+            // TODO: unsafe clock domain for 'timeout'
+            if((timeout != timeoutPrev) && (timeout == 1)) begin
+                readBuffer[15] <= din;
+                bitIndex <= 14;
+                outputAddress <= 7;
+            end
+            else if(bitIndex == 0) begin
+                outputBuffer <= readBuffer;
+                outputAddress <= outputAddress + 1;
+                bitIndex <= 15;
+
+                readStrobe_flag <= ~readStrobe_flag;
+            end
+        end
+    end
 
     always @(posedge clock)
     begin
-        cin_sync_prev <= cin_sync;
+        if(reset) begin
+            timeoutCounter <= 0;
+            timeout <= 0;
+        end
+        else begin
+            // TODO: This probably glitches on reset
+            readStrobeSyncPrev <= readStrobeSync;
 
-        //dout_reg <= din_sync;
-        dout_reg <= 0;
-        cout_reg <= cin_sync;
+            timeoutCounter <= timeoutCounter + 1;
+            timeout <= 0;
 
-        // If we just got a clock, do the clock dance
-        if((cin_sync == 1) && (cin_sync_prev == 0)) begin
-
-            bitIndex <= bitIndex + 1;
-
-            values[wordIndex][15-bitIndex] <= din_sync;
-
-            if(bitIndex == 15) begin
-                wordIndex <= wordIndex + 1;
-                bitIndex <= 0;
-
-                if(wordIndex == 7) begin
-                    dout_reg <= 1;
-                    wordIndex <= 0;
-                end
+            if(readStrobe) begin
+                timeoutCounter <= 0;
+                timeout <= 0;
+            end
+            else if(timeoutCounter == 13'b1111111111111) begin
+                timeoutCounter <= 13'b1111111111111;
+                timeout <= 1;
             end
         end
-
-        // Otherwise, see if we need to timeout
-
-        /*
-        count <= count + 9;
-
-        if(count < 10) begin
-            values[0] <= values[0] + 1;
-            values[1] <= values[1] + 1;
-            values[2] <= values[2] + 1;
-            values[3] <= values[3] + 1;
-            values[4] <= values[4] + 1;
-            values[5] <= values[5] + 1;
-            values[6] <= values[6] + 1;
-            values[7] <= values[7] + 1;
-        end
-        */
     end
 
 endmodule

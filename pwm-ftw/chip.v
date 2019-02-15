@@ -30,7 +30,26 @@ module chip (
 
     wire clock;
     wire reset;
-    wire [15:0] values [8];
+
+    wire [15:0] spiData;
+    wire [2:0] spiAddress;
+    wire spiReadStrobe;
+
+    reg [15:0] values [7:0];
+    initial begin
+        $readmemh("values.list", values);
+    end
+
+    wire [7:0] outputs;
+
+    assign EN_IN_1 = ~outputs[0];
+    assign EN_IN_2 = ~outputs[1];
+    assign EN_IN_3 = ~outputs[2];
+    assign EN_IN_4 = ~outputs[3];
+    assign EN_IN_5 = ~outputs[4];
+    assign EN_IN_6 = ~outputs[5];
+    assign EN_IN_7 = ~outputs[6];
+    assign EN_IN_8 = ~outputs[7];
 
     assign TP_1 = 0;
     assign TP_2 = 0;
@@ -56,15 +75,18 @@ module chip (
         .cin(CIN),
         .dout(DO),
         .cout(CO),
-        .v0(values[0]),
-        .v1(values[1]),
-        .v2(values[2]),
-        .v3(values[3]),
-        .v4(values[4]),
-        .v5(values[5]),
-        .v6(values[6]),
-        .v7(values[7])
+        .data(spiData),
+        .address(spiAddress),
+        .readStrobe(spiReadStrobe)
     );
+
+    always @(posedge clock)
+    begin
+        if(spiReadStrobe) begin
+            values[spiAddress] <= spiData;
+        end
+    end
+
 
     pwm my_pwm(
         .clock(clock),
@@ -77,14 +99,14 @@ module chip (
         .v5(values[5]),
         .v6(values[6]),
         .v7(values[7]),
-        .o0(EN_IN_1),
-        .o1(EN_IN_2),
-        .o2(EN_IN_3),
-        .o3(EN_IN_4),
-        .o4(EN_IN_5),
-        .o5(EN_IN_6),
-        .o6(EN_IN_7),
-        .o7(EN_IN_8)
+        .o0(outputs[0]),
+        .o1(outputs[1]),
+        .o2(outputs[2]),
+        .o3(outputs[3]),
+        .o4(outputs[4]),
+        .o5(outputs[5]),
+        .o6(outputs[6]),
+        .o7(outputs[7])
     );
 
 
