@@ -53,6 +53,8 @@ build-*/
 
 # yosys
 *.blif
+*.asc
+*.json
 
 # Project specific
 
