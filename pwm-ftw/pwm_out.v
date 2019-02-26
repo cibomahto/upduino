@@ -1,4 +1,4 @@
-module pwm(
+module pwm_out(
     input clock,
     input reset,
     input [15:0] v0,

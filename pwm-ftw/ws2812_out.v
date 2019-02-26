@@ -1,10 +1,10 @@
-module ws2812 (
+module ws2812_out (
     input clock,
     input reset,
 
-    input [15:0] spiData,
-    input [10:0] spiAddress,
-    input spiReadStrobe,
+    input [15:0] spi_data,
+    input [10:0] spi_address,
+    input spi_write_strobe,
 
     output data
 );
@@ -23,8 +23,8 @@ module ws2812 (
 
     always @(posedge clock)
     begin
-        if(spiReadStrobe) begin
-            values[spiAddress] <= spiData;
+        if(spi_write_strobe) begin
+            values[spi_address] <= spi_data;
         end
     end
 

@@ -55,6 +55,7 @@ build-*/
 *.blif
 *.asc
 *.json
+*.log
 
 # Project specific
 

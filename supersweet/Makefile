@@ -3,10 +3,11 @@ TARGET = pwm_wtf
 
 VERILOG_FILES = \
 	chip.v \
-	pwm.v \
 	sync.v \
-	spireader.v \
-	ws2812.v
+	spi_in.v \
+	dmx_in.v \
+	pwm_out.v \
+	ws2812_out.v
 
 PIN_CONFIG_FILE = pwm_wtf_reva.pcf
 CLOCK_CONSTRAINTS_FILE = clocks.py
