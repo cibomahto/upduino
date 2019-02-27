@@ -1,0 +1,4 @@
+set_io DMX_OUT      2
+set_io TP_0         46
+set_io TP_1         47
+set_io TP_2         45

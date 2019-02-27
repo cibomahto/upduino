@@ -1,6 +1,9 @@
 module chip (
     input DIN,
-    input CIN,
+    
+    // TODO: For debugging
+//    input CIN,
+    output CIN,
     output DO,
     output CO,
 
@@ -22,10 +25,10 @@ module chip (
     output TP_7,
 
     // For SPI flash: not used in this design
-//    input ICE_MISO,
-//    input ICE_MOSI,
-//    input ICE_SCK,
-//    input ICE_SS
+    input ICE_MISO,
+    input ICE_MOSI,
+    input ICE_SCK,
+    input ICE_SS,
 );
 
     wire clock;
@@ -60,6 +63,11 @@ module chip (
     assign TP_5 = 0;
     assign TP_7 = 0;
 
+    assign CIN = DIN;
+
+    //assign DO = 0;
+    //assign CO = 0;
+
     // TODO: Hardware reset line
     assign reset = 0;
 
@@ -73,41 +81,6 @@ module chip (
 //    defparam u_hfosc.CLKHF_DIV = 2'b01; // 00: 48MHz 01: 24MHz 10: 12MHz 11: 6MHz
     defparam u_hfosc.CLKHF_DIV = "0b00";
 
-    wire [15:0] spi_data;
-    wire [10:0] spi_address;
-    wire spi_write_strobe;
-
-    spi_in my_spi_in(
-        .clock(clock),
-        .reset(reset),
-        .din(DIN),
-        .cin(CIN),
-//        .dout(DO),
-        .cout(CO),
-        .data(spi_data),
-        .address(spi_address),
-        .write_strobe(spi_write_strobe)
-    );
-
-    always @(posedge clock)
-    begin
-        if(spi_write_strobe) begin
-            if(spi_address < 8)
-                values[spi_address[2:0]] <= spi_data;
-        end
-    end
-
-    ws2812_out my_ws2812_out(
-        .clock(clock),
-        .reset(reset),
-        
-        .spi_data(spi_data),
-        .spi_address(spi_address),
-        .spi_write_strobe(spi_write_strobe),
-
-        .data(DO)
-    );
-
     wire [7:0] dmx_data;
     wire [8:0] dmx_channel;
     wire dmx_write_strobe;
@@ -116,21 +89,23 @@ module chip (
         .clock(clock),
         .reset(reset),
         .dmx_in(DIN),
+        .dmx_out(DO),
         .data(dmx_data),
         .channel(dmx_channel),
-        .write_strobe(dmx_write_strobe)
+        .write_strobe(dmx_write_strobe),
+        .debug(CO),
     );
 
-    /*
     always @(posedge clock)
     begin
         if(dmx_write_strobe) begin
-            if(dmx_channel < 8)
-                values[dmx_channel[2:0]] <= dmx_data;
+            // Assign DMX channels 0-7 to the upper bits of the PWM values
+            if(dmx_channel < 8) begin
+                values[dmx_channel[2:0]][15:8] <= dmx_data;
+                values[dmx_channel[2:0]][7:0] <= 0;
+            end
         end
     end
-    */
-
 
     pwm_out my_pwm_out(
         .clock(clock),

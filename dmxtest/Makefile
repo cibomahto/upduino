@@ -1,13 +1,11 @@
 
-TARGET = pwm_wtf
+TARGET = dmx_out_test
 
 VERILOG_FILES = \
 	chip.v \
-	sync.v \
-	dmx_in.v \
-	pwm_out.v
+	dmx_out.v
 
-PIN_CONFIG_FILE = pwm_wtf_reva.pcf
+PIN_CONFIG_FILE = upduino_v2.pcf
 CLOCK_CONSTRAINTS_FILE = clocks.py
 
 #$(TARGET).bin: $(VERILOG_FILES) $(PIN_CONFIG_FILE)
@@ -36,15 +34,13 @@ stats: $(TARGET).json $(TARGET).asc
 	sed -n '/=== chip ===/,/6\.28/p' $(TARGET)-yosys.log
 	sed -n '/Info: Device utilisation/,/Info: Placed/p' $(TARGET)-nextpnr.log
 
-#.PHONY: flash
-#flash: $(TARGET).bin
-#	iceprog $(TARGET).bin
-
 .PHONY: flash
 flash: $(TARGET).bin
-	./flash.py $(TARGET).bin
-	./capture.py
-	wmctrl -a "Saleae Logic Software"
+	iceprog $(TARGET).bin
+
+#.PHONY: flash
+#flash: $(TARGET).bin
+#	./flash.py $(TARGET).bin
 
 .PHONY: clean
 clean:
