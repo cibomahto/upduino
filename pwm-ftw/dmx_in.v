@@ -15,9 +15,9 @@
 //    detected.
 parameter MAX_CHANNEL_BITS = 8; // Max. number of channels supported = 2^(n+1)
 
-parameter MINIMUM_BREAK_COUNT = (4400-440);  // Minimum clock cycles for break (92uS)
-parameter MINIMUM_MAB_COUNT = (576-58);      // Minimum clock cycles for 'MAB' (12uS)
-parameter BIT_COUNT = 192;                   // Clock cycles for a bit (4uS)
+parameter MINIMUM_BREAK_COUNT = ((4400-440)/2);  // Minimum clock cycles for break (92uS)
+parameter MINIMUM_MAB_COUNT = ((576-58)/2);      // Minimum clock cycles for 'MAB' (12uS)
+parameter BIT_COUNT = (192/2);                   // Clock cycles for a bit (4uS)
 
 
 module dmx_in(

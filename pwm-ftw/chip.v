@@ -1,9 +1,10 @@
+parameter PWM_CHANNELS = 8;
+
 module chip (
     input DIN,
     
-    // TODO: For debugging
 //    input CIN,
-    output CIN,
+    output CIN,     // TODO: For debugging
     output DO,
     output CO,
 
@@ -34,23 +35,22 @@ module chip (
     wire clock;
     wire reset;
 
-
-    // PWM value memory
-    reg [15:0] values [7:0];
+//    // PWM value memory
+    reg [15:0] values [(PWM_CHANNELS-1):0];
     initial begin
         $readmemh("values.list", values);
     end
 
     // PWM output wires
-    wire [7:0] outputs;
-    assign EN_IN_1 = ~outputs[0];
-    assign EN_IN_2 = ~outputs[1];
-    assign EN_IN_3 = ~outputs[2];
-    assign EN_IN_4 = ~outputs[3];
-    assign EN_IN_5 = ~outputs[4];
-    assign EN_IN_6 = ~outputs[5];
-    assign EN_IN_7 = ~outputs[6];
-    assign EN_IN_8 = ~outputs[7];
+    wire [(PWM_CHANNELS-1):0] outputs;
+    assign EN_IN_1 = ~outputs[7];
+    assign EN_IN_2 = ~outputs[6];
+    assign EN_IN_3 = ~outputs[5];
+    assign EN_IN_4 = ~outputs[4];
+    assign EN_IN_5 = ~outputs[3];
+    assign EN_IN_6 = ~outputs[2];
+    assign EN_IN_7 = ~outputs[1];
+    assign EN_IN_8 = ~outputs[0];
 
     // PWM output enable
     assign OE = 0;
@@ -71,15 +71,17 @@ module chip (
     // TODO: Hardware reset line
     assign reset = 0;
 
-
-    // Configure the clock for 48 MHz operation (TODO: Seems like 24MHz?)
+    // Configure the clock for 24 MHz operation
+    // TODO: Nextpnr says we can't hit 48MHz?
 	SB_HFOSC u_hfosc (
        	.CLKHFPU(1'b1),
        	.CLKHFEN(1'b1),
         .CLKHF(clock)
     );
-//    defparam u_hfosc.CLKHF_DIV = 2'b01; // 00: 48MHz 01: 24MHz 10: 12MHz 11: 6MHz
-    defparam u_hfosc.CLKHF_DIV = "0b00";
+//    defparam u_hfosc.CLKHF_DIV = "0b00";    // 48 MHz
+    defparam u_hfosc.CLKHF_DIV = "0b01";    // 24 MHz
+//    defparam u_hfosc.CLKHF_DIV = "0b10";    // 12 MHz
+//    defparam u_hfosc.CLKHF_DIV = "0b11";    // 6 MHz
 
     wire [7:0] dmx_data;
     wire [8:0] dmx_channel;
@@ -96,17 +98,21 @@ module chip (
         .debug(CO),
     );
 
+    reg [15:0] lut_8_to_16 [255:0];
+    initial begin
+        $readmemh("lut_8_to_16_pow_1.80.list", lut_8_to_16);
+    end
+
     always @(posedge clock)
     begin
         if(dmx_write_strobe) begin
             // Assign DMX channels 0-7 to the upper bits of the PWM values
-            if(dmx_channel < 8) begin
-                values[dmx_channel[2:0]][15:8] <= dmx_data;
-                values[dmx_channel[2:0]][7:0] <= 0;
+            if(dmx_channel < PWM_CHANNELS) begin
+                values[dmx_channel[2:0]] <= lut_8_to_16[dmx_data];
             end
         end
     end
-
+/*
     pwm_out my_pwm_out(
         .clock(clock),
         .reset(reset),
@@ -127,6 +133,17 @@ module chip (
         .o6(outputs[6]),
         .o7(outputs[7])
     );
+*/
 
-
+    generate
+        genvar i;
+        for (i=0; i<(PWM_CHANNELS); i=i+1) begin
+            pwm_channel i_pwm_channel(
+               .clock(clock),
+               .reset(reset),
+               .value(values[i]),
+               .out(outputs[i]),
+            );
+        end
+    endgenerate
 endmodule

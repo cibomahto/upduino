@@ -5,7 +5,8 @@ VERILOG_FILES = \
 	chip.v \
 	sync.v \
 	dmx_in.v \
-	pwm_out.v
+	pwm_out.v \
+	pwm_channel.v
 
 PIN_CONFIG_FILE = pwm_wtf_reva.pcf
 CLOCK_CONSTRAINTS_FILE = clocks.py
@@ -43,8 +44,8 @@ stats: $(TARGET).json $(TARGET).asc
 .PHONY: flash
 flash: $(TARGET).bin
 	./flash.py $(TARGET).bin
-	./capture.py
-	wmctrl -a "Saleae Logic Software"
+#	./capture.py
+#	wmctrl -a "Saleae Logic Software"
 
 .PHONY: clean
 clean:
