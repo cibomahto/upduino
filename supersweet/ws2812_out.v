@@ -6,10 +6,14 @@ module ws2812_out (
     input [10:0] spi_address,
     input spi_write_strobe,
 
-    output data
+    output reg data,
 );
+
     // We have a 30*29*3 = 2610 byte = 1305 word screen.
     reg [15:0] values [1304:0];
+    initial begin
+        $readmemh("test_data.list", values);
+    end
 
     reg [20:0] counter;
     reg [2:0] state;
@@ -18,9 +22,9 @@ module ws2812_out (
     reg [4:0] bitIndex;         // Bit we are currently clocking out
     reg [15:0] val;             // Value of word we are currently clocking out
 
-    reg dataReg;
-    assign data = dataReg;
+    reg data;
 
+    // TODO: Make a memory bus, wire this module into it
     always @(posedge clock)
     begin
         if(spi_write_strobe) begin
@@ -35,10 +39,10 @@ module ws2812_out (
             wordIndex <= 0;
             bitIndex <= 15;
             state <= 0;
-            dataReg <= 0;
+            data <= 0;
         end
         else begin
-            dataReg <= 0;
+            data <= 0;
             counter <= counter + 1;
 
             case(state)
@@ -53,7 +57,7 @@ module ws2812_out (
             end
             1:  // Bit High
             begin
-                dataReg <= 1;
+                data <= 1;
 
                 if(counter == 12) begin
                     counter <= 0;
@@ -62,7 +66,7 @@ module ws2812_out (
             end
             2:  // Bit Med
             begin
-                dataReg <= val[bitIndex];
+                data <= val[bitIndex];
 
                 if(counter == 35) begin
                     counter <= 0;
@@ -71,7 +75,7 @@ module ws2812_out (
             end
             3:  // Bit Low
             begin
-                dataReg <= 0;
+                data <= 0;
 
                 if(counter == 12) begin
                     counter <= 0;
@@ -84,7 +88,7 @@ module ws2812_out (
                         wordIndex <= wordIndex + 1;
                         val = values[wordIndex];    // TODO: Read this after we've incremented, for faster access
 
-                        if(wordIndex == 1304) begin      // Reached end of bytes, delay now
+                        if(wordIndex == 1305) begin      // Reached end of bytes, delay now
                             state <= state + 1;
                         end
                     end
@@ -92,7 +96,7 @@ module ws2812_out (
             end
             4:  // Delay
             begin
-                dataReg <= 0;
+                data <= 0;
                 
                 if(counter == 18000) begin
                     wordIndex <= 0;

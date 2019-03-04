@@ -1,0 +1,18 @@
+set_io LED_CS       27
+set_io LED_SCK      26
+set_io LED_MOSI     25
+set_io LED_MISO     23
+
+set_io DATA1        2
+#set_io CLOCK1       46
+#set_io DATA2        47
+#set_io CLOCK2       45
+#set_io DATA3        48
+#set_io CLOCK3       3
+#set_io DATA4        4
+#set_io CLOCK4       44
+
+#set_io ICE_MISO   14
+#set_io ICE_MOSI   17
+#set_io ICE_SCK    15
+#set_io ICE_SS     16
