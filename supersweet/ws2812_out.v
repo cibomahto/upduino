@@ -3,7 +3,7 @@ module ws2812_out (
     input reset,
 
     input [15:0] spi_data,
-    input [10:0] spi_address,
+    input [12:0] spi_address,
     input spi_write_strobe,
 
     output reg data,
@@ -15,15 +15,6 @@ module ws2812_out (
         $readmemh("test_data.list", values);
     end
 
-    reg [20:0] counter;
-    reg [2:0] state;
-
-    reg [12:0] wordIndex;       // Word we are currently clocking out
-    reg [4:0] bitIndex;         // Bit we are currently clocking out
-    reg [15:0] val;             // Value of word we are currently clocking out
-
-    reg data;
-
     // TODO: Make a memory bus, wire this module into it
     always @(posedge clock)
     begin
@@ -32,6 +23,15 @@ module ws2812_out (
         end
     end
 
+
+    reg [2:0] state;
+    reg [20:0] counter;
+
+    reg [12:0] wordIndex;       // Word we are currently clocking out
+    reg [4:0] bitIndex;         // Bit we are currently clocking out
+    reg [15:0] val;             // Value of word we are currently clocking out
+
+    reg data;
 
     always @(posedge clock)
     begin

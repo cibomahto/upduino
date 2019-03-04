@@ -6,8 +6,8 @@ module chip (
 
     output DATA1,
 //    output CLOCK1,
-//    output DATA2,
-//    output CLOCK2,
+    output DATA2,
+    output CLOCK2,
 //    output DATA3,
 //    output CLOCK3,
 //    output DATA4,
@@ -30,7 +30,7 @@ module chip (
     defparam u_hfosc.CLKHF_DIV = "0b00";
 
     wire [15:0] spi_data;
-    wire [10:0] spi_address;
+    wire [12:0] spi_address;
     wire spi_write_strobe;
 
     spi_in my_spi_in(
@@ -53,6 +53,24 @@ module chip (
         .spi_address(spi_address),
         .spi_write_strobe(spi_write_strobe),
 
-        .data(DATA1)
+        .data(DATA1),
+    );
+
+
+    reg [2:0] clockdiv;
+    always @(posedge clock) begin
+        clockdiv <= clockdiv + 1;
+    end
+
+    icnd2110_out my_icnd2110_out(
+        .clock(clockdiv[1]),
+        .reset(reset),
+        
+        .spi_data(spi_data),
+        .spi_address(spi_address),
+        .spi_write_strobe(spi_write_strobe),
+
+        .data_out(DATA2),
+        .clock_out(CLOCK2),
     );
 endmodule
