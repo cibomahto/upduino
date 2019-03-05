@@ -1,94 +1,102 @@
-module ws2812_out (
-    input clock,
-    input reset,
+module ws2812_out #(
+    // We have a 30*29*3 = 2610 byte = 1305 word screen.
+    parameter WORD_COUNT = 1305,
+) (
+    input clk,
+    input rst,
 
     input [15:0] spi_data,
     input [12:0] spi_address,
     input spi_write_strobe,
 
-    output reg data,
+    output reg data_out,
 );
+//    // Timings for a 48MHz clock
+//    localparam BIT_HIGH_COUNT = 12;
+//    localparam BIT_MED_COUNT = 35;
+//    localparam BIT_LOW_COUNT = 12;
+//    localparam DELAY_COUNT = 18000;
 
-    // We have a 30*29*3 = 2610 byte = 1305 word screen.
-    reg [15:0] values [1304:0];
+    // Timings for a 24MHz clock
+    localparam BIT_HIGH_COUNT = 6;
+    localparam BIT_MED_COUNT = 18;
+    localparam BIT_LOW_COUNT = 6;
+    localparam DELAY_COUNT = 9000;
+
+    reg [15:0] values [(WORD_COUNT-1):0];
     initial begin
         $readmemh("test_data.list", values);
     end
 
     // TODO: Make a memory bus, wire this module into it
-    always @(posedge clock)
-    begin
-        if(spi_write_strobe) begin
+    always @(posedge clk)
+        if(spi_write_strobe)
             values[spi_address] <= spi_data;
-        end
-    end
-
 
     reg [2:0] state;
-    reg [20:0] counter;
+    //reg [20:0] counter;
+    reg [15:0] counter; // TODO: Verify if lower count is ok
 
-    reg [12:0] wordIndex;       // Word we are currently clocking out
-    reg [4:0] bitIndex;         // Bit we are currently clocking out
+    reg [12:0] word_index;      // Word we are currently clocking out
+    reg [4:0] bit_index;        // Bit we are currently clocking out
     reg [15:0] val;             // Value of word we are currently clocking out
 
-    reg data;
-
-    always @(posedge clock)
+    always @(posedge clk)
     begin
-        if(reset) begin
-            wordIndex <= 0;
-            bitIndex <= 15;
+        if(rst) begin
+            word_index <= 0;
+            bit_index <= 15;
             state <= 0;
-            data <= 0;
+            data_out <= 0;
         end
         else begin
-            data <= 0;
+            data_out <= 0;
             counter <= counter + 1;
 
             case(state)
             0:  // Setup
             begin
-                bitIndex <= 15;
+                bit_index <= 15;
                 state <= 1;
 
                 counter <= 0;
-                val <= values[wordIndex];
-                wordIndex <= 1;
+                val <= values[word_index];
+                word_index <= 1;
             end
             1:  // Bit High
             begin
-                data <= 1;
+                data_out <= 1;
 
-                if(counter == 12) begin
+                if(counter == BIT_HIGH_COUNT) begin
                     counter <= 0;
                     state <= state + 1;
                 end
             end
             2:  // Bit Med
             begin
-                data <= val[bitIndex];
+                data_out <= val[bit_index];
 
-                if(counter == 35) begin
+                if(counter == BIT_MED_COUNT) begin
                     counter <= 0;
                     state <= state + 1;
                 end
             end
             3:  // Bit Low
             begin
-                data <= 0;
+                data_out <= 0;
 
-                if(counter == 12) begin
+                if(counter == BIT_LOW_COUNT) begin
                     counter <= 0;
                     state <= 1;
 
-                    bitIndex <= bitIndex - 1;
+                    bit_index <= bit_index - 1;
 
-                    if(bitIndex == 0) begin
-                        bitIndex <= 15;
-                        wordIndex <= wordIndex + 1;
-                        val = values[wordIndex];    // TODO: Read this after we've incremented, for faster access
+                    if(bit_index == 0) begin
+                        bit_index <= 15;
+                        word_index <= word_index + 1;
+                        val = values[word_index];    // TODO: Read this after we've incremented, for faster access
 
-                        if(wordIndex == 1305) begin      // Reached end of bytes, delay now
+                        if(word_index == WORD_COUNT) begin      // Reached end of bytes, delay now
                             state <= state + 1;
                         end
                     end
@@ -96,10 +104,10 @@ module ws2812_out (
             end
             4:  // Delay
             begin
-                data <= 0;
+                data_out <= 0;
                 
-                if(counter == 18000) begin
-                    wordIndex <= 0;
+                if(counter == DELAY_COUNT) begin
+                    word_index <= 0;
 
                     counter <= 0;
                     state <= 0;

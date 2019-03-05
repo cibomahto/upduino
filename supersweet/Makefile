@@ -1,4 +1,3 @@
-
 TARGET = supersweet
 
 VERILOG_FILES = \
@@ -7,20 +6,23 @@ VERILOG_FILES = \
 	sr_latch_gate.v \
 	spi_in.v \
 	ws2812_out.v \
-	icnd2110_out.v
+	icnd2110_out.v \
+	pll.v
 
 PIN_CONFIG_FILE = upduino.pcf
 CLOCK_CONSTRAINTS_FILE = clocks.py
 
-#$(TARGET).bin: $(VERILOG_FILES) $(PIN_CONFIG_FILE)
-#	yosys -q -p "synth_ice40 -blif $(TARGET).blif" $(VERILOG_FILES)
-#	arachne-pnr -d 5k -P sg48 -p $(PIN_CONFIG_FILE) $(TARGET).blif -o $(TARGET).txt
-#	icepack $(TARGET).txt $(TARGET).bin
-
 default: $(TARGET).bin
 
+pll.v:
+	icepll -i 12 -o 30 -f pll.v -m
+
 $(TARGET).json: $(VERILOG_FILES)
-	yosys -q -p "synth_ice40 -top chip -json $(TARGET).json" -l $(TARGET)-yosys.log $(VERILOG_FILES)
+	yosys \
+		-q \
+		-p "synth_ice40 -top chip -json $(TARGET).json" \
+		-l $(TARGET)-yosys.log \
+		$(VERILOG_FILES)
 
 $(TARGET).asc: $(TARGET).json $(PIN_CONFIG_FILE) $(CLOCK_CONSTRAINTS_FILE)
 	nextpnr-ice40 \

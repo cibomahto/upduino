@@ -2,7 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Create some test data for an LED screen')
 parser.add_argument('-x', dest='xRes', type=int, default=29, help='Screen width, in pixels')
-parser.add_argument('-o', dest='yRes', type=int, default=30, help='Screen height, in pixels')
+parser.add_argument('-y', dest='yRes', type=int, default=30, help='Screen height, in pixels')
 
 args=parser.parse_args()
 
