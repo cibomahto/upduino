@@ -24,7 +24,7 @@ module icnd2110(
     reg data;
     reg start_flag_r;
 
-    assign spi_c = !clk;        // Off by 1/2 phase?   
+    assign spi_c = clk;        // Off by 1/2 phase?   
     assign spi_d = data;
     assign start_flag = start_flag_r;
 
@@ -33,12 +33,8 @@ module icnd2110(
         .value(pwm_val),
         .corrected(correction)
     );
-/*
-    assign correction[15:8] = val;
-    assign correction[7:0] = 0;
-*/
 
-    always @(posedge clk)
+    always @(negedge clk)
         if(rst) begin
             state <= 0;
             data <= 0;
