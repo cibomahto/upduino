@@ -9,7 +9,7 @@ VERILOG_FILES = \
 	icnd2110_out.v \
 	pll.v
 
-PIN_CONFIG_FILE = upduino.pcf
+PIN_CONFIG_FILE = supersweet_reva.pcf
 CLOCK_CONSTRAINTS_FILE = clocks.py
 
 default: $(TARGET).bin
@@ -45,9 +45,9 @@ stats: $(TARGET).json $(TARGET).asc
 flash: $(TARGET).bin
 	iceprog $(TARGET).bin
 
-#.PHONY: flash
-#flash: $(TARGET).bin
-#	./flash.py $(TARGET).bin
+.PHONY: flashpy
+flashpy: $(TARGET).bin
+	./flash.py $(TARGET).bin
 
 .PHONY: clean
 clean:

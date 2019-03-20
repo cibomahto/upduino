@@ -1,15 +1,16 @@
 module ws2812_out #(
-    // We have a 30*29*3 = 2610 byte = 1305 word screen.
-    parameter WORD_COUNT = 1305,
+    parameter WORD_COUNT = 1305,    // Number of LEDs supported / 2 
+    parameter ADDRESS_BUS_WIDTH = 12,       // Must be large enough to address WORD_COUNT
 ) (
     input clk,
     input rst,
 
     input [15:0] spi_data,
-    input [12:0] spi_address,
+    input [ADDRESS_BUS_WIDTH:0] spi_address,
     input spi_write_strobe,
 
     output reg data_out,
+    output reg backup_out,
 );
 //    // Timings for a 48MHz clock
 //    localparam BIT_HIGH_COUNT = 12;
@@ -23,9 +24,10 @@ module ws2812_out #(
     localparam BIT_LOW_COUNT = 6;
     localparam DELAY_COUNT = 9000;
 
+
     reg [15:0] values [(WORD_COUNT-1):0];
     initial begin
-        $readmemh("test_data.list", values);
+        $readmemh("ws2812_8x8_test.list", values);
     end
 
     // TODO: Make a memory bus, wire this module into it
@@ -34,15 +36,17 @@ module ws2812_out #(
             values[spi_address] <= spi_data;
 
     reg [2:0] state;
-    //reg [20:0] counter;
-    reg [15:0] counter; // TODO: Verify if lower count is ok
+    reg [15:0] counter;         // TODO: Verify if lower count is ok
 
-    reg [12:0] word_index;      // Word we are currently clocking out
+    reg [ADDRESS_BUS_WIDTH:0] word_index;      // Word we are currently clocking out
     reg [4:0] bit_index;        // Bit we are currently clocking out
     reg [15:0] val;             // Value of word we are currently clocking out
 
     always @(posedge clk)
     begin
+        // TODO: implement WS2813 backup data signal
+        backup_out = 0;
+
         if(rst) begin
             word_index <= 0;
             bit_index <= 15;
