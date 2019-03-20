@@ -37,7 +37,7 @@ module spi_in #(
 
         if(cs) begin
             bit_index <= 15;
-            address <= 13'b1111111111111;
+            address <= 14'b11111111111111;
         end
         else begin
             read_buffer[bit_index] <= mosi;

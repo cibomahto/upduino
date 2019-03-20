@@ -20,9 +20,9 @@ module icnd2110_out #(
     end
 
     // TODO: Make a memory bus, wire this module into it
-//    always @(posedge clk)
-//        if(spi_write_strobe)
-//            values[spi_address] <= spi_data;
+    always @(posedge clk)
+        if(spi_write_strobe)
+            values[spi_address] <= spi_data;
 
     reg [3:0] state;
     reg [10:0] counter;
