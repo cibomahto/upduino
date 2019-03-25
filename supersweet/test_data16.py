@@ -12,14 +12,18 @@ for i in range(0,args.count):
     green = 0
     blue = 0
 
-    if (i%3==0):
-        red = 65535
+    red = i*3 + 0
+    green = i*3 + 1
+    blue = i*3 + 2
 
-    if (i%3==1):
-        green = 65535
+#    if (i%3==0):
+#        red = 65535
 
-    if (i%3==2):
-        blue = 65535
+#    if (i%3==1):
+#        green = 65535
+
+#    if (i%3==2):
+#        blue = 65535
 
     out.write('%04x '%(red))
     out.write('%04x '%(green))

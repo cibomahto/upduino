@@ -13,6 +13,9 @@ module icnd2110_out #(
 
     output reg data_out,
     output wire clock_out,
+
+    output reg [15:0] val,
+    output reg sob,
 );
     reg [15:0] values [(WORD_COUNT-1):0];
     initial begin
@@ -30,7 +33,7 @@ module icnd2110_out #(
     reg [ADDRESS_BUS_WIDTH:0] word_index;   // Address of word we are currently clocking out
     reg [2:0] subchip_byte;              // Counter from 0..5
 
-    reg [15:0] val;                      // 16-bit output value from memory
+//    reg [15:0] val;                      // 16-bit output value from memory
 
     reg [3:0] clockdiv;
     always @(posedge clk)
@@ -47,6 +50,7 @@ module icnd2110_out #(
         end
         else begin
             data_out <= 0;
+            sob <= 0;
 
             case(state)
             0:  // 0. wait for start
@@ -105,8 +109,8 @@ module icnd2110_out #(
 //                    val <= word_index;
 
                     // And calculate the next word and subchip byte indexes
-                    word_index <= word_index - 1;
-                    subchip_byte <= subchip_byte + 1;
+//                    word_index <= word_index - 1;
+//                    subchip_byte <= subchip_byte + 1;
                 end
             end
 
@@ -122,6 +126,9 @@ module icnd2110_out #(
                 //                  1011111
                 //
                 counter <= counter + 1;
+
+                if(counter[3:0] == 0)
+                    sob <= 1;
 
                 data_out <= val[15 - counter[3:0]];
 

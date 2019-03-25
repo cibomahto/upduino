@@ -142,6 +142,8 @@ module chip (
     );
 */
 
+    wire [15:0] val;
+    wire sob;
 
     icnd2110_out icnd2110_out_1(
         .clk(clk),
@@ -153,10 +155,23 @@ module chip (
 
         .data_out(DATA_1),
         .clock_out(CLOCK_1),
+        .val(val),
+        .sob(sob),
     );
     defparam icnd2110_out_1.WORD_COUNT = OUT_1_WORDS;
     defparam icnd2110_out_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
+    assign DATA_2 = DATA_1;
+    assign CLOCK_2 = CLOCK_1;
+
+    assign DATA_3 = sob;
+//    assign DATA_3 = val[5];
+    assign CLOCK_3 = val[4];
+    assign DATA_5 =  val[3];
+    assign CLOCK_5 = val[2];
+    assign DATA_7 =  val[1];
+    assign CLOCK_7 = val[0];
+/*
     icnd2110_out icnd2110_out_2(
         .clk(clk),
         .rst(rst),
@@ -184,7 +199,7 @@ module chip (
     );
     defparam icnd2110_out_3.WORD_COUNT = OUT_3_WORDS;
     defparam icnd2110_out_3.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
-
+*/
     ws2812_out ws2812_out_4(
         .clk(clk),
         .rst(rst),
@@ -204,12 +219,12 @@ module chip (
 
     // Repeat outputs
 
-    assign DATA_5 = DATA_1;
-    assign CLOCK_5 = CLOCK_1;
+//    assign DATA_5 = DATA_1;
+//    assign CLOCK_5 = CLOCK_1;
     assign DATA_6 = DATA_1;
     assign CLOCK_6 = CLOCK_1;
-    assign DATA_7 = DATA_1;
-    assign CLOCK_7 = CLOCK_1;
+//    assign DATA_7 = DATA_1;
+//    assign CLOCK_7 = CLOCK_1;
     assign DATA_8 = DATA_1;
     assign CLOCK_8 = CLOCK_1;
     assign DATA_9 = DATA_1;
