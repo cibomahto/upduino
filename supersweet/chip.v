@@ -161,17 +161,14 @@ module chip (
     defparam icnd2110_out_1.WORD_COUNT = OUT_1_WORDS;
     defparam icnd2110_out_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
-    assign DATA_2 = DATA_1;
-    assign CLOCK_2 = CLOCK_1;
 
     assign DATA_3 = sob;
-//    assign DATA_3 = val[5];
     assign CLOCK_3 = val[4];
     assign DATA_5 =  val[3];
     assign CLOCK_5 = val[2];
     assign DATA_7 =  val[1];
     assign CLOCK_7 = val[0];
-/*
+
     icnd2110_out icnd2110_out_2(
         .clk(clk),
         .rst(rst),
@@ -186,6 +183,7 @@ module chip (
     defparam icnd2110_out_2.WORD_COUNT = OUT_2_WORDS;
     defparam icnd2110_out_2.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
+/*
     icnd2110_out icnd2110_out_3(
         .clk(clk),
         .rst(rst),
@@ -219,6 +217,8 @@ module chip (
 
     // Repeat outputs
 
+//    assign DATA_2 = DATA_1;
+//    assign CLOCK_2 = CLOCK_1;
 //    assign DATA_5 = DATA_1;
 //    assign CLOCK_5 = CLOCK_1;
     assign DATA_6 = DATA_1;
