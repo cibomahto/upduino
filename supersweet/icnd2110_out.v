@@ -35,6 +35,8 @@ module icnd2110_out #(
 
 //    reg [15:0] val;                      // 16-bit output value from memory
 
+    reg [15:0] next_val;
+
     reg [3:0] clockdiv;
     always @(posedge clk)
         clockdiv <= clockdiv + 1;
@@ -95,22 +97,23 @@ module icnd2110_out #(
 
                 // Pre-load the word index and subchip byte one cycle before
                 // they are needed.
-                if(counter == 14) begin
+                if(counter[3:0] == 13) begin
                     word_index <= 5;
                     subchip_byte <= 0;
                 end
 
-                if(counter == 15) begin
+                if(counter[3:0] == 14) begin
+                    next_val <= values[word_index];
+                end
+
+                if(counter[3:0] == 15) begin
                     state <= state + 1;
                     counter <= 0;
 
-                    // Preload the first byte
-                    val <= values[word_index];
-//                    val <= word_index;
-
-                    // And calculate the next word and subchip byte indexes
-//                    word_index <= word_index - 1;
-//                    subchip_byte <= subchip_byte + 1;
+                    //val <= values[word_index];
+                    val <= next_val;
+                    word_index <= word_index - 1;
+                    subchip_byte <= subchip_byte + 1;
                 end
             end
 
@@ -132,9 +135,14 @@ module icnd2110_out #(
 
                 data_out <= val[15 - counter[3:0]];
 
+                // For each bit in they 16-bit output
+                if(counter[3:0] == 14) begin
+                    next_val <= values[word_index];
+                end
+             
                 if(counter[3:0] == 15) begin
-                    val <= values[word_index];
-//                    val <= word_index;
+                    //val <= values[word_index];
+                    val <= next_val;
 
                     //  5, 4, 3, 2, 1, 0,11,10, 9, 8, 7, 6, - first chip
                     // 17,16,15,14,13,12,23,22,21,20,19,18, - second chip
@@ -148,6 +156,7 @@ module icnd2110_out #(
                     end
                 end
 
+                // At the end of each group of 6 words
                 if(counter[6:0] == (16*6-1)) begin
                     state <= state + 1;
                     counter <= 0;
