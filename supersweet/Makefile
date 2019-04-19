@@ -7,6 +7,7 @@ VERILOG_FILES = \
 	spi_in.v \
 	ws2812_out.v \
 	icnd2110_out.v \
+	sram.v \
 	pll.v
 
 PIN_CONFIG_FILE = supersweet_reva.pcf

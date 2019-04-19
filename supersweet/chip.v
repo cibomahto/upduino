@@ -33,7 +33,7 @@ module chip (
     output DMX_OUT,
 );
 
-    localparam ADDRESS_BUS_WIDTH = 13;
+    localparam ADDRESS_BUS_WIDTH = 14;
 
     wire clk;
     wire rst;
@@ -64,7 +64,7 @@ module chip (
 
 
     wire [15:0] spi_data;
-    wire [ADDRESS_BUS_WIDTH:0] spi_word_address;
+    wire [(ADDRESS_BUS_WIDTH-1):0] spi_word_address;
     wire spi_write_strobe;
 
     spi_in spi_in_1(
@@ -117,30 +117,20 @@ module chip (
         end
     end
 
-//    assign DATA3 = spi_write_strobe;
-//    assign CLOCK3 = out_1_write_strobe;
-//    assign DATA4 = out_2_write_strobe;
 
+    sram_bus sram_bus_1(
+        .clk(clk),
+        .rst(rst),
 
-/*
-//    reg [15:0] ram_data_in;
-//    reg [13:0] ram_addr;
-    wire [15:0] ram_data_out;
-//    reg ram_cs;
+        .write_address(spi_word_address),
+        .write_data(spi_data),
+        .write_strobe(spi_write_strobe),
 
-    SB_SPRAM256KA ramfn_inst1(
-        .DATAIN(spi_data),
-        .ADDRESS({1'b0,spi_address}),
-        .MASKWREN( 4'b1111),
-        .WREN(1'b1),
-        .CHIPSELECT(spi_write_strobe),
-        .CLOCK(clk),
-        .STANDBY(1'b0),
-        .SLEEP(1'b0),
-        .POWEROFF(1'b1),
-        .DATAOUT(ram_data_out)
+        .read_address(0'b0000000000000),
+        .read_strobe(0),
     );
-*/
+    defparam sram_bus_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
+
 
     wire [15:0] val;
     wire sob;

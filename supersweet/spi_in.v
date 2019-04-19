@@ -11,7 +11,7 @@ module spi_in #(
     // System bus connections. These are in the system clock domain.
     input clk,
     output reg [15:0] data,         // Data frame
-    output reg [ADDRESS_BUS_WIDTH:0] address,      // Address to write data frame
+    output reg [(ADDRESS_BUS_WIDTH-1):0] address,      // Address to write data frame
     output wire write_strobe        // Asserts for 1 system clock cycle when new data is ready
 );
 
