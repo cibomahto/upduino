@@ -8,7 +8,7 @@ VERILOG_FILES = \
 	pwm_out.v \
 	pwm_channel.v
 
-PIN_CONFIG_FILE = pwm_wtf_reva.pcf
+PIN_CONFIG_FILE = pwm_ftw_revb.pcf
 CLOCK_CONSTRAINTS_FILE = clocks.py
 
 #$(TARGET).bin: $(VERILOG_FILES) $(PIN_CONFIG_FILE)

@@ -1,12 +1,9 @@
 parameter PWM_CHANNELS = 8;
 
 module chip (
-    input DIN,
+    input DMX_IN,
     
-//    input CIN,
-    output CIN,     // TODO: For debugging
-    output DO,
-    output CO,
+    output DMX_OUT,
 
 	output EN_IN_1,
 	output EN_IN_2,
@@ -18,12 +15,8 @@ module chip (
 	output EN_IN_8,
 	output OE,
 
-    output TP_1,
-    output TP_2,
-    output TP_3,
-    output TP_4,
-    output TP_5,
-    output TP_7,
+    output reg DMX_TX_IND,
+    output reg DMX_RX_IND,
 
     // For SPI flash: not used in this design
     input ICE_MISO,
@@ -55,21 +48,12 @@ module chip (
     // PWM output enable
     assign OE = 0;
 
-    // For testing (unused)
-    assign TP_1 = 0;
-    assign TP_2 = 0;
-    assign TP_3 = 0;
-    assign TP_4 = 0;
-    assign TP_5 = 0;
-    assign TP_7 = 0;
-
-    assign CIN = DIN;
-
-    //assign DO = 0;
-    //assign CO = 0;
-
     // TODO: Hardware reset line
     assign reset = 0;
+
+    // TODO: Flash during reception
+    assign DMX_TX_IND = 0;
+    assign DMX_RX_IND = 0;
 
     // Configure the clock for 24 MHz operation
     // TODO: Nextpnr says we can't hit 48MHz?
@@ -90,12 +74,12 @@ module chip (
     dmx_in my_dmx_in(
         .clock(clock),
         .reset(reset),
-        .dmx_in(DIN),
-        .dmx_out(DO),
+        .dmx_in(DMX_IN),
+        .dmx_out(DMX_OUT),
         .data(dmx_data),
         .channel(dmx_channel),
         .write_strobe(dmx_write_strobe),
-        .debug(CO),
+        .debug(),
     );
 
     reg [15:0] lut_8_to_16 [255:0];

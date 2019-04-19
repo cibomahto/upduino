@@ -1,0 +1,20 @@
+set_io EN_IN_1    12
+set_io EN_IN_2    11
+set_io EN_IN_3    10
+set_io EN_IN_4    9
+set_io EN_IN_5    6
+set_io EN_IN_6    4
+set_io EN_IN_7    3
+set_io EN_IN_8    2
+set_io OE         13
+
+set_io DMX_IN     36
+set_io DMX_OUT    35
+
+set_io ICE_MISO   14
+set_io ICE_MOSI   17
+set_io ICE_SCK    15
+set_io ICE_SS     16
+
+set_io DMX_RX_IND 40
+set_io DMX_TX_IND 39
