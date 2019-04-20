@@ -1,6 +1,5 @@
 module fifo #(
-    parameter ADDRESS_BUS_WIDTH = 12,
-    parameter DATA_BUS_WIDTH = 16,
+    parameter DATA_WIDTH = 16,
 ) (
     input clk,
     input rst,
@@ -9,13 +8,13 @@ module fifo #(
     output reg fault,                   // True if FIFO was overrun or underrun
 
     input write_strobe,                 // Write an address and data, marking the fifo full
-    input [(DATA_BUS_WIDTH-1):0] write_data,    // Buffered data value
+    input [(DATA_WIDTH-1):0] write_data,    // Buffered data value
 
     input read_strobe,                  // Read the address and data, marking the fifo empty
-    output reg [(DATA_BUS_WIDTH-1):0] read_data,    // Buffered data value
+    output reg [(DATA_WIDTH-1):0] read_data,    // Buffered data value
 );
 
-    reg [(DATA_BUS_WIDTH-1):0] data;    // Buffered data value
+    reg [(DATA_WIDTH-1):0] data;    // Buffered data value
 
     always @(posedge clk) begin
         if(rst) begin

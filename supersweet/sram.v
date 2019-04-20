@@ -42,15 +42,13 @@ module sram_bus #(
         .DATAOUT(ram_data_out),
     );
 
-//    reg [1:0] state;
+    reg [2:0] last_state;
+    reg [2:0] counter;
 
     localparam STATE_IDLE = 0;
     localparam STATE_WRITE = 1;
     localparam STATE_READ_1 = 2;
-    localparam STATE_READ_1_READY = 3;
-    localparam STATE_READ_2 = 4;
-    localparam STATE_READ_2_READY = 5;
-    localparam STATE_WAIT = 6;
+    localparam STATE_READ_2 = 3;
 
 
     reg write_finished_strobe;
@@ -83,6 +81,8 @@ module sram_bus #(
 
             write_finished_strobe <= 0;
 
+            last_state <= state;
+
             if(write_strobe) begin
                 write_address_cache <= write_address;
                 write_data_cache <=write_data;
@@ -91,20 +91,22 @@ module sram_bus #(
             case(state)
             STATE_IDLE:
             begin
+                counter <= 0;
+
                 // TODO: This will only catch a write strobe if we happen to be
                 // idle when it comes in. Move this to a FIFO, and poll the FIFO
                 // from here.
-                if(write_pending) begin
+                if(write_pending && (last_state != STATE_WRITE)) begin
                     ram_address <= write_address_cache;
                     ram_data_in <= write_data_cache;
     
                     state <= STATE_WRITE;
                 end
-                else if(read_request_1) begin
+                else if(read_request_1 && (last_state != STATE_READ_1)) begin
                     ram_address <= read_address_1;
                     state <= STATE_READ_1;
                 end
-                else if(read_request_2) begin
+                else if(read_request_2 && (last_state != STATE_READ_2)) begin
                     ram_address <= read_address_2;
                     state <= STATE_READ_2;
                 end
@@ -117,27 +119,23 @@ module sram_bus #(
             end
             STATE_READ_1:
             begin
-                state <= STATE_READ_1_READY;
-            end
-            STATE_READ_1_READY:
-            begin
-                read_data <= ram_data_out;
-                read_finished_strobe_1 <= 1;
-                state <= STATE_WAIT;
+                counter <= counter + 1;
+
+                if(counter == 1) begin
+                    read_data <= ram_data_out;
+                    read_finished_strobe_1 <= 1;
+                    state <= STATE_IDLE;
+                end
             end
             STATE_READ_2:
             begin
-                state <= STATE_READ_2_READY;
-            end
-            STATE_READ_2_READY:
-            begin
-                read_data <= ram_data_out;
-                read_finished_strobe_2 <= 1;
-                state <= STATE_WAIT;
-            end
-            STATE_WAIT:
-            begin
-                state <= STATE_IDLE;
+                counter <= counter + 1;
+
+                if(counter == 1) begin
+                    read_data <= ram_data_out;
+                    read_finished_strobe_2 <= 1;
+                    state <= STATE_IDLE;
+                end
             end
             default:
                 state <= STATE_IDLE;

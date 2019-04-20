@@ -22,9 +22,6 @@ module icnd2110_out #(
 
     reg [2:0] subchip_byte;             // Counter from 0..5
 
-//    reg [15:0] val;                     // Value we are currently clocking out
-//    reg [15:0] next_val;                // Next value to clock out
-
     reg [4:0] clockdiv;
 
     reg read_fifo_toggle;
@@ -50,33 +47,12 @@ module icnd2110_out #(
         .read_strobe(read_fifo_strobe),
         .read_data(val),
     );
-    defparam fifo_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
     assign read_request = ~fifo_1_full;
-
-//    reg start_read_toggle;
-//    reg start_read_toggle_prev;
-//    reg start_read_strobe;
-
-//    srff srff_1(
-//        .clk(clk),
-//        .rst(rst),
-//        .s(start_read_strobe),
-//        .r(read_finished_strobe),
-//        .q(read_strobe),
-//    );
 
     always @(posedge clk) begin
         clockdiv <= clockdiv + 1;
 
-//        if (read_finished_strobe == 1)
-//            next_val = read_data;
-//
-//        start_read_strobe <= 0;
-//        start_read_toggle_prev <= start_read_toggle;
-//
-//        if (start_read_toggle != start_read_toggle_prev)
-//            start_read_strobe <= 1;
     end
 
     assign clock_out = clockdiv[3];
@@ -85,10 +61,7 @@ module icnd2110_out #(
         if(rst) begin
             state <= 0;
             data_out <= 0;
-            //start_read_toggle <= 0;
             read_fifo_toggle <= 0;
-
-            //val <= 0;
         end
         else begin
             data_out <= 0;
@@ -137,8 +110,9 @@ module icnd2110_out #(
                 // Request the first read early in case it gets queued
                 if(counter[3:0] == 0) begin
                     read_address <= 5 + START_ADDRESS;
+
+                    // Make a bogus read to get the fifo started
                     read_fifo_toggle <= ~read_fifo_toggle;
-//                    start_read_toggle <= ~start_read_toggle;
 
                     subchip_byte <= 0;
                 end
@@ -147,10 +121,9 @@ module icnd2110_out #(
                     state <= state + 1;
                     counter <= 0;
 
-                    // TODO: Fault if read_finished_strobe hasn't happened
-                    // yet.
+                    // TODO: Fault if fifo is not full yet 
                     read_fifo_toggle <= ~read_fifo_toggle;
-//                    val <= next_val;
+
                     read_address <= read_address - 1;
                     subchip_byte <= subchip_byte + 1;
                 end
@@ -173,7 +146,6 @@ module icnd2110_out #(
 
                 // For each bit in they 16-bit output
                 if(counter[3:0] == 15) begin
-                    //val <= next_val;
                     read_fifo_toggle <= ~read_fifo_toggle;
 
                     //  5, 4, 3, 2, 1, 0,11,10, 9, 8, 7, 6, - first chip
@@ -181,12 +153,10 @@ module icnd2110_out #(
                     if(subchip_byte == 5) begin
                         subchip_byte <= 0;
                         read_address <= read_address + 11;
-                        //start_read_toggle <= ~start_read_toggle;
                     end
                     else begin
                         subchip_byte <= subchip_byte + 1;
                         read_address <= read_address - 1;
-                        //start_read_toggle <= ~start_read_toggle;
                     end
                 end
 
