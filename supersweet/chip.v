@@ -124,7 +124,7 @@ module chip (
     defparam icnd2110_out_2.START_ADDRESS = OUT_2_OFFSET;
 
 
-    wire [1:0] state;
+    wire [2:0] state;
 
     sram_bus sram_bus_1(
         .clk(clk),
