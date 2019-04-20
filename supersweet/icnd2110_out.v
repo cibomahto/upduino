@@ -1,4 +1,5 @@
 module icnd2110_out #(
+    parameter START_ADDRESS = 0,
     parameter WORD_COUNT = (336),
     parameter ADDRESS_BUS_WIDTH = 12,       // Must be large enough to address WORD_COUNT
     parameter CFG_UP = 0,
@@ -6,40 +7,51 @@ module icnd2110_out #(
 ) (
     input clk,
     input rst,
-    
-    input [15:0] spi_data,
-    input [ADDRESS_BUS_WIDTH:0] spi_address,
-    input spi_write_strobe,
+   
+    output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
+    output reg read_strobe,                         // Strobe to request a read
+    input [15:0] read_data,                         // Incoming data
+    input read_finished_strobe,
 
     output reg data_out,
     output wire clock_out,
 
-    output reg [15:0] val,
-    output reg sob,
+    output reg start_read_strobe,
 );
-    reg [15:0] values [(WORD_COUNT-1):0];
-    initial begin
-        $readmemh("test_data16.list", values);
-    end
-
-    // TODO: Make a memory bus, wire this module into it
-    always @(posedge clk)
-        if(spi_write_strobe)
-            values[spi_address] <= spi_data;
-
     reg [3:0] state;
     reg [10:0] counter;
 
-    reg [ADDRESS_BUS_WIDTH:0] word_index;   // Address of word we are currently clocking out
-    reg [2:0] subchip_byte;              // Counter from 0..5
+    reg [2:0] subchip_byte;             // Counter from 0..5
 
-//    reg [15:0] val;                      // 16-bit output value from memory
-
-    reg [15:0] next_val;
+    reg [15:0] val;                     // Value we are currently clocking out
+    reg [15:0] next_val;                // Next value to clock out
 
     reg [3:0] clockdiv;
-    always @(posedge clk)
+
+    reg start_read_toggle;
+    reg start_read_toggle_prev;
+    // reg start_read_strobe;
+
+    srff flop(
+        .clk(clk),
+        .rst(rst),
+        .s(start_read_strobe),
+        .r(read_finished_strobe),
+        .q(read_strobe),
+    );
+
+    always @(posedge clk) begin
         clockdiv <= clockdiv + 1;
+
+        if (read_finished_strobe == 1)
+            next_val = read_data;
+
+        start_read_strobe <= 0;
+        start_read_toggle_prev <= start_read_toggle;
+
+        if (start_read_toggle != start_read_toggle_prev)
+            start_read_strobe <= 1;
+    end
 
     assign clock_out = clockdiv[2];
 
@@ -47,12 +59,12 @@ module icnd2110_out #(
         if(rst) begin
             state <= 0;
             data_out <= 0;
+            start_read_toggle <= 0;
 
             val <= 0;
         end
         else begin
             data_out <= 0;
-            sob <= 0;
 
             case(state)
             0:  // 0. wait for start
@@ -95,24 +107,22 @@ module icnd2110_out #(
                         data_out <= 0;
                 endcase
 
-                // Pre-load the word index and subchip byte one cycle before
-                // they are needed.
-                if(counter[3:0] == 13) begin
-                    word_index <= 5;
-                    subchip_byte <= 0;
-                end
+                // Request the first read early in case it gets queued
+                if(counter[3:0] == 0) begin
+                    read_address <= 5 + START_ADDRESS;
+                    start_read_toggle <= ~start_read_toggle;
 
-                if(counter[3:0] == 14) begin
-                    next_val <= values[word_index];
+                    subchip_byte <= 0;
                 end
 
                 if(counter[3:0] == 15) begin
                     state <= state + 1;
                     counter <= 0;
 
-                    //val <= values[word_index];
+                    // TODO: Fault if read_finished_strobe hasn't happened
+                    // yet.
                     val <= next_val;
-                    word_index <= word_index - 1;
+                    read_address <= read_address - 1;
                     subchip_byte <= subchip_byte + 1;
                 end
             end
@@ -130,29 +140,23 @@ module icnd2110_out #(
                 //
                 counter <= counter + 1;
 
-                if(counter[3:0] == 0)
-                    sob <= 1;
-
                 data_out <= val[15 - counter[3:0]];
 
                 // For each bit in they 16-bit output
-                if(counter[3:0] == 14) begin
-                    next_val <= values[word_index];
-                end
-             
                 if(counter[3:0] == 15) begin
-                    //val <= values[word_index];
                     val <= next_val;
 
                     //  5, 4, 3, 2, 1, 0,11,10, 9, 8, 7, 6, - first chip
                     // 17,16,15,14,13,12,23,22,21,20,19,18, - second chip
                     if(subchip_byte == 5) begin
                         subchip_byte <= 0;
-                        word_index <= word_index + 11;
+                        read_address <= read_address + 11;
+                        start_read_toggle <= ~start_read_toggle;
                     end
                     else begin
                         subchip_byte <= subchip_byte + 1;
-                        word_index <= word_index - 1;
+                        read_address <= read_address - 1;
+                        start_read_toggle <= ~start_read_toggle;
                     end
                 end
 
@@ -162,7 +166,7 @@ module icnd2110_out #(
                     counter <= 0;
 
                     if(state == 7) begin
-                        if(word_index < WORD_COUNT)
+                        if(read_address < WORD_COUNT + START_ADDRESS)
                             state <= 4;
                     end
                 end

@@ -34,17 +34,23 @@ module chip (
 );
 
     localparam ADDRESS_BUS_WIDTH = 14;
+    localparam OUTPUT_COUNT = 4;
+
+    // For Teddy Lo Waking Life
+    localparam OUT_1_WORDS = (112*3*8); // 112 LEDs = 336 16-bit channels/board, and 8 boards.
+    localparam OUT_2_WORDS = (112*3*8);
+    localparam OUT_3_WORDS = (112*3*4);
+    localparam OUT_4_WORDS = (8*8*3/2); // Extra 8x8 matrix of WS2812 LEDs
+
+    localparam OUT_1_OFFSET = 0;
+    localparam OUT_2_OFFSET = OUT_1_OFFSET + OUT_1_WORDS;
+    localparam OUT_3_OFFSET = OUT_2_OFFSET + OUT_2_WORDS;
+    localparam OUT_4_OFFSET = OUT_3_OFFSET + OUT_3_WORDS;
 
     wire clk;
     wire rst;
 
-    wire pll_clock;
-    wire pll_locked;
-
-
-    // TODO: Hardware reset line
-    assign rst = 0;
-    //assign rst = !pll_locked;
+    assign rst = 0; // TODO: Hardware reset input
 
     // Configure the HFOSC
 	SB_HFOSC u_hfosc (
@@ -53,15 +59,6 @@ module chip (
         .CLKHF(clk)
     );
     defparam u_hfosc.CLKHF_DIV = "0b01"; // 00: 48MHz, 01: 24MHz, 10: 12MHz, 11: 6MHz
-
-    /*
-    pll my_pll(
-        .clock_in(clk),
-        .clock_out(pll_clock),
-        .locked(pll_locked),
-    );
-    */
-
 
     wire [15:0] spi_data;
     wire [(ADDRESS_BUS_WIDTH-1):0] spi_word_address;
@@ -80,43 +77,54 @@ module chip (
     );
     defparam spi_in_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
+    wire [(ADDRESS_BUS_WIDTH-1):0] read_address_1;
+    wire read_strobe_1;
+    wire read_finished_strobe_1;
 
-    localparam OUTPUT_COUNT = 4;
+    wire [15:0] read_data;
 
-    localparam OUT_1_WORDS = (112*3*8); // 112 LEDs = 336 16-bit channels/board, and 8 boards.
-    localparam OUT_2_WORDS = (112*3*8);
-    localparam OUT_3_WORDS = (112*3*4);
-    localparam OUT_4_WORDS = (8*8*3/2); // Extra 8x8 matrix of WS2812 LEDs
+    wire start_read_strobe_1;
 
-    localparam OUT_1_OFFSET = 0;
-    localparam OUT_2_OFFSET = OUT_1_OFFSET + OUT_1_WORDS;
-    localparam OUT_3_OFFSET = OUT_2_OFFSET + OUT_2_WORDS;
-    localparam OUT_4_OFFSET = OUT_3_OFFSET + OUT_3_WORDS;
+    icnd2110_out icnd2110_out_1(
+        .clk(clk),
+        .rst(rst),
+       
+        .read_address(read_address_1),
+        .read_strobe(read_strobe_1),
+        .read_data(read_data),
+        .read_finished_strobe(read_finished_strobe_1),
 
-    reg [(OUTPUT_COUNT-1):0] output_write_strobes;
-    reg [ADDRESS_BUS_WIDTH:0] output_addresses [(OUTPUT_COUNT-1):0];
+        .data_out(DATA_1),
+        .clock_out(CLOCK_1),
 
-    always @(posedge clk) begin
+        .start_read_strobe(start_read_strobe_1),
+    );
+    defparam icnd2110_out_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
+    defparam icnd2110_out_1.WORD_COUNT = OUT_1_WORDS;
+    defparam icnd2110_out_1.START_ADDRESS = OUT_1_OFFSET;
 
-        output_write_strobes <= 0;
+    wire [(ADDRESS_BUS_WIDTH-1):0] read_address_2;
+    wire read_strobe_2;
+    wire read_finished_strobe_2;
 
-        output_addresses[0] <= (spi_word_address - OUT_1_OFFSET);
-        output_addresses[1] <= (spi_word_address - OUT_2_OFFSET);
-        output_addresses[2] <= (spi_word_address - OUT_3_OFFSET);
-        output_addresses[3] <= (spi_word_address - OUT_4_OFFSET);
+    icnd2110_out icnd2110_out_2(
+        .clk(clk),
+        .rst(rst),
+        
+        .read_address(read_address_2),
+        .read_strobe(read_strobe_2),
+        .read_data(read_data),
+        .read_finished_strobe(read_finished_strobe_2),
 
-        if(spi_write_strobe) begin
-            if(spi_word_address < (OUT_1_OFFSET + OUT_1_WORDS))
-                output_write_strobes[0] <= 1;
-            else if(spi_word_address < (OUT_2_OFFSET + OUT_2_WORDS))
-                output_write_strobes[1] <= 1;
-            else if(spi_word_address < (OUT_3_OFFSET + OUT_3_WORDS))
-                output_write_strobes[2] <= 1;
-            else if(spi_word_address < (OUT_4_OFFSET + OUT_4_WORDS))
-                output_write_strobes[3] <= 1;
-        end
-    end
+        .data_out(DATA_2),
+        .clock_out(CLOCK_2),
+    );
+    defparam icnd2110_out_2.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
+    defparam icnd2110_out_2.WORD_COUNT = OUT_2_WORDS;
+    defparam icnd2110_out_2.START_ADDRESS = OUT_2_OFFSET;
 
+
+    wire [1:0] state;
 
     sram_bus sram_bus_1(
         .clk(clk),
@@ -126,104 +134,48 @@ module chip (
         .write_data(spi_data),
         .write_strobe(spi_write_strobe),
 
-        .read_address(0'b0000000000000),
-        .read_strobe(0),
+        .read_address_1(read_address_1),
+        .read_strobe_1(read_strobe_1),
+        .read_finished_strobe_1(read_finished_strobe_1),
+
+        .read_address_2(read_address_2),
+        .read_strobe_2(read_strobe_2),
+        .read_finished_strobe_2(read_finished_strobe_2),
+
+        .read_data(read_data),
+
+        .state(state),
     );
     defparam sram_bus_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
 
-    wire [15:0] val;
-    wire sob;
-
-    icnd2110_out icnd2110_out_1(
-        .clk(clk),
-        .rst(rst),
-        
-        .spi_data(spi_data),
-        .spi_address(output_addresses[0]),
-        .spi_write_strobe(output_write_strobes[0]),
-
-        .data_out(DATA_1),
-        .clock_out(CLOCK_1),
-        .val(val),
-        .sob(sob),
-    );
-    defparam icnd2110_out_1.WORD_COUNT = OUT_1_WORDS;
-    defparam icnd2110_out_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
-
-
-    assign DATA_3 = sob;
-    assign CLOCK_3 = val[4];
-    assign DATA_5 =  val[3];
-    assign CLOCK_5 = val[2];
-    assign DATA_7 =  val[1];
-    assign CLOCK_7 = val[0];
-
-    icnd2110_out icnd2110_out_2(
-        .clk(clk),
-        .rst(rst),
-        
-        .spi_data(spi_data),
-        .spi_address(output_addresses[1]),
-        .spi_write_strobe(output_write_strobes[1]),
-
-        .data_out(DATA_2),
-        .clock_out(CLOCK_2),
-    );
-    defparam icnd2110_out_2.WORD_COUNT = OUT_2_WORDS;
-    defparam icnd2110_out_2.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
-
-/*
-    icnd2110_out icnd2110_out_3(
-        .clk(clk),
-        .rst(rst),
-        
-        .spi_data(spi_data),
-        .spi_address(output_addresses[2]),
-        .spi_write_strobe(output_write_strobes[2]),
-
-        .data_out(DATA_3),
-        .clock_out(CLOCK_3),
-    );
-    defparam icnd2110_out_3.WORD_COUNT = OUT_3_WORDS;
-    defparam icnd2110_out_3.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
-*/
-    ws2812_out ws2812_out_4(
-        .clk(clk),
-        .rst(rst),
-        
-        .spi_data(spi_data),
-        .spi_address(output_addresses[3]),
-        .spi_write_strobe(output_write_strobes[3]),
-
-        .data_out(DATA_4),
-        .backup_out(CLOCK_4),
-    );
-    defparam ws2812_out_4.WORD_COUNT = OUT_4_WORDS;
-    defparam ws2812_out_4.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
+    // Debug outputs
+    assign DATA_3 = spi_write_strobe;
+    assign CLOCK_3 = read_strobe_1;
+    assign DATA_5 =  read_finished_strobe_1;
+    assign CLOCK_5 = read_strobe_2;
+    assign DATA_7 =  read_finished_strobe_2;
+    assign CLOCK_7 = state[1];
+    assign DATA_9 = state[0];
+    assign CLOCK_9 = start_read_strobe_1;
 
     // Configure DMX as passthrough
     assign DMX_OUT = DMX_IN;
 
-    // Repeat outputs
-
-//    assign DATA_2 = DATA_1;
-//    assign CLOCK_2 = CLOCK_1;
-//    assign DATA_5 = DATA_1;
-//    assign CLOCK_5 = CLOCK_1;
-    assign DATA_6 = DATA_1;
-    assign CLOCK_6 = CLOCK_1;
-//    assign DATA_7 = DATA_1;
-//    assign CLOCK_7 = CLOCK_1;
-    assign DATA_8 = DATA_1;
-    assign CLOCK_8 = CLOCK_1;
-    assign DATA_9 = DATA_1;
-    assign CLOCK_9 = CLOCK_1;
-    assign DATA_10 = DATA_1;
-    assign CLOCK_10 = CLOCK_1;
-
+    // LEDs do nothing
     assign RGB0 = 0;
     assign RGB1 = 1;
     assign RGB2 = 0;
+
+    // Stub disabled outputs
+    assign DATA_4 = 0;
+    assign CLOCK_4 = 0;
+    assign DATA_6 = 0;
+    assign CLOCK_6 = 0;
+    assign DATA_8 = 0;
+    assign CLOCK_8 = 0;
+    assign DATA_10 = 0;
+    assign CLOCK_10 = 0;
+
 
 endmodule
