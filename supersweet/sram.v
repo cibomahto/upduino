@@ -11,11 +11,11 @@ module sram_bus #(
     input write_strobe,
 
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_1,
-    input read_strobe_1,
+    input read_request_1,
     output reg read_finished_strobe_1,
 
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_2,
-    input read_strobe_2,
+    input read_request_2,
     output reg read_finished_strobe_2,
 
     output reg [(DATA_BUS_WIDTH-1):0] read_data,
@@ -100,11 +100,11 @@ module sram_bus #(
     
                     state <= STATE_WRITE;
                 end
-                else if(read_strobe_1) begin
+                else if(read_request_1) begin
                     ram_address <= read_address_1;
                     state <= STATE_READ_1;
                 end
-                else if(read_strobe_2) begin
+                else if(read_request_2) begin
                     ram_address <= read_address_2;
                     state <= STATE_READ_2;
                 end

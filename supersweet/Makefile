@@ -9,6 +9,8 @@ VERILOG_FILES = \
 	icnd2110_out.v \
 	sram.v \
 	srff.v \
+	fifo.v \
+	toggle_to_strobe.v \
 	pll.v
 
 PIN_CONFIG_FILE = supersweet_reva.pcf
