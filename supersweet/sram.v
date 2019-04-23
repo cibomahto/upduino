@@ -36,7 +36,7 @@ module sram_bus #(
     reg ram_wren;
     reg ram_chipselect;
 
-    wire [(ADDRESS_BUS_WIDTH-1):0] read_addresses [OUTPUT_COUNT];
+    wire [(ADDRESS_BUS_WIDTH-1):0] read_addresses [(OUTPUT_COUNT-1):0];
     assign read_addresses[0] = read_address_0;
     assign read_addresses[1] = read_address_1;
     assign read_addresses[2] = read_address_2;

@@ -61,7 +61,6 @@ module icnd2110_out #(
         if(rst) begin
             state <= 0;
             data_out <= 0;
-            read_fifo_toggle <= 0;
         end
         else begin
             data_out <= 0;

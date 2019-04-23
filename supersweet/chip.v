@@ -40,18 +40,21 @@ module chip (
     localparam OUTPUT_COUNT = 10;
 
     // Output counts, in words
-    reg [(ADDRESS_BUS_WIDTH-1):0] output_word_counts [(clogb2(OUTPUT_COUNT)-1):0];
+    reg [(ADDRESS_BUS_WIDTH-1):0] output_word_counts [(OUTPUT_COUNT-1):0];
     initial begin
         $readmemh("output_word_counts.list", output_word_counts);
     end
 
-    reg [(ADDRESS_BUS_WIDTH-1):0] output_start_addresses [(clogb2(OUTPUT_COUNT)-1):0];
+    reg [(ADDRESS_BUS_WIDTH-1):0] output_start_addresses [(OUTPUT_COUNT-1):0];
     initial begin
         $readmemh("output_start_addresses.list", output_start_addresses);
     end
 
     // Reset signals for the outputs
     reg [(OUTPUT_COUNT-1):0] output_resets;
+    initial begin
+        output_resets <= 10'b1111111111;
+    end
 
     wire clk;
     wire rst;
@@ -72,30 +75,17 @@ module chip (
     wire [(ADDRESS_BUS_WIDTH-1):0] spi_word_address;
     wire spi_write_strobe;
 
-    reg address_write;
-    reg data_write;
-
     // Map the configuration registers into memory
     always @(posedge clk) begin
-        address_write <= 0;
-        data_write <= 0;
-
-        output_resets <= 0;
-
         if(spi_write_strobe) begin
             if(spi_word_address[15:4] == 12'h800) begin
                 output_word_counts[spi_word_address[3:0]] <= spi_data;
-                address_write <= 1;
-
-                // Automatically reset the module
-                output_resets[spi_word_address[3:0]] <= 1;
             end
-            if(spi_word_address[15:4] == 12'h801) begin
+            else if(spi_word_address[15:4] == 12'h801) begin
                 output_start_addresses[spi_word_address[3:0]] <= spi_data;
-                data_write <= 1;
-
-                // Automatically reset the module
-                output_resets[spi_word_address[3:0]] <= 1;
+            end
+            else if(spi_word_address[15:4] == 12'h802) begin
+                output_resets[spi_word_address[3:0]] <= spi_data;
             end
         end
     end
@@ -184,8 +174,8 @@ module chip (
         .state(state),
     );
 
-//    assign DATA_1 = data_outputs[0];
-//    assign DATA_2 = data_outputs[1];
+    assign DATA_1 = data_outputs[0];
+    assign DATA_2 = data_outputs[1];
     assign DATA_3 = data_outputs[2];
     assign DATA_4 = data_outputs[3];
     assign DATA_5 = data_outputs[4];
@@ -195,7 +185,7 @@ module chip (
     assign DATA_9 = data_outputs[8];
     assign DATA_10 = data_outputs[9];
 
-//    assign CLOCK_1 = clock_outputs[0];
+    assign CLOCK_1 = clock_outputs[0];
     assign CLOCK_2 = clock_outputs[1];
     assign CLOCK_3 = clock_outputs[2];
     assign CLOCK_4 = clock_outputs[3];
@@ -207,17 +197,11 @@ module chip (
     assign CLOCK_10 = clock_outputs[9];
 
     // Debug outputs
-    assign DATA_1 = data_write;
-    assign CLOCK_1 = address_write;
-    assign DATA_2 = spi_write_strobe;
-    //assign DATA_3 = spi_write_strobe;
-    //assign CLOCK_3 = read_request_1;
-    //assign DATA_5 =  _strobe[0];
-    //assign CLOCK_5 = read_request[1];
-    //assign DATA_7 =  _strobe[1];
-    //assign CLOCK_7 = state[2];
-    //assign DATA_9 = state[1];
-    //assign CLOCK_9 = state[0];
+//    assign DATA_1 = output_start_addresses[0][3];
+//    assign CLOCK_1 = output_start_addresses[0][2];
+//    assign DATA_2 = output_start_addresses[0][1];
+//    assign CLOCK_2 = output_start_addresses[0][0];
+
 
     // Configure DMX as passthrough
     assign DMX_OUT = DMX_IN;

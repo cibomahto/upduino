@@ -21,6 +21,7 @@ module spi_in #(
 
     // Toggle signal for read (in CIN clock domain)
     reg write_toggle;
+    wire write_toggle_sync;
 
     // Synchronize write_strobe to system clock
     sync_ss din_sync_ss(clk, 0, write_toggle, write_toggle_sync);
