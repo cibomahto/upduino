@@ -1,12 +1,13 @@
 module ws2812_out #(
-    parameter WORD_COUNT = 1305,    // Number of LEDs supported / 2 
-    parameter ADDRESS_BUS_WIDTH = 12,       // Must be large enough to address WORD_COUNT
+    parameter WORD_COUNT = 1305,        // Number of LEDs supported / 2 
+    parameter ADDRESS_BUS_WIDTH = 16,
+    parameter DATA_BUS_WIDTH = 16,
 ) (
     input clk,
     input rst,
 
-    input [15:0] spi_data,
-    input [ADDRESS_BUS_WIDTH:0] spi_address,
+    input [(DATA_BUS_WIDTH):0] spi_data,
+    input [(ADDRESS_BUS_WIDTH-1):0] spi_address,
     input spi_write_strobe,
 
     output reg data_out,

@@ -1,18 +1,18 @@
 module icnd2110_out #(
-    parameter START_ADDRESS = 0,
-    parameter WORD_COUNT = (336),
-    parameter ADDRESS_BUS_WIDTH = 12,       // Must be large enough to address WORD_COUNT
+    parameter ADDRESS_BUS_WIDTH = 16,       // Must be large enough to address WORD_COUNT
     parameter CFG_UP = 0,
     parameter CFG_PWM_WIDER = 1,
 ) (
     input clk,
     input rst,
-   
+
+    input [15:0] word_count,
+    input [15:0] start_address,
+
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read
-
     input [15:0] read_data,                             // Incoming data
-    input read_finished_strobe,
+    input read_finished_strobe,                         // Strobe input to signal data ready
 
     output reg data_out,
     output wire clock_out,
@@ -20,6 +20,7 @@ module icnd2110_out #(
     reg [3:0] state;
     reg [10:0] counter;
 
+    reg [15:0] words_remaining;         // Counter of how many words are left to send
     reg [2:0] subchip_byte;             // Counter from 0..5
 
     reg [4:0] clockdiv;
@@ -108,7 +109,8 @@ module icnd2110_out #(
 
                 // Request the first read early in case it gets queued
                 if(counter[3:0] == 0) begin
-                    read_address <= 5 + START_ADDRESS;
+                    words_remaining <= word_count;
+                    read_address <= 5 + start_address;
 
                     // Make a bogus read to get the fifo started
                     read_fifo_toggle <= ~read_fifo_toggle;
@@ -123,6 +125,7 @@ module icnd2110_out #(
                     // TODO: Fault if fifo is not full yet 
                     read_fifo_toggle <= ~read_fifo_toggle;
 
+                    words_remaining <= words_remaining - 1;
                     read_address <= read_address - 1;
                     subchip_byte <= subchip_byte + 1;
                 end
@@ -146,6 +149,7 @@ module icnd2110_out #(
                 // For each bit in they 16-bit output
                 if(counter[3:0] == 15) begin
                     read_fifo_toggle <= ~read_fifo_toggle;
+                    words_remaining <= words_remaining - 1;
 
                     //  5, 4, 3, 2, 1, 0,11,10, 9, 8, 7, 6, - first chip
                     // 17,16,15,14,13,12,23,22,21,20,19,18, - second chip
@@ -165,7 +169,7 @@ module icnd2110_out #(
                     counter <= 0;
 
                     if(state == 7) begin
-                        if(read_address < WORD_COUNT + START_ADDRESS)
+                        if(words_remaining > 0)
                             state <= 4;
                     end
                 end

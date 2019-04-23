@@ -1,98 +1,81 @@
 module spi_in #(
-    parameter ADDRESS_BUS_WIDTH = 12,
-
+    parameter ADDRESS_BUS_WIDTH = 16,
+    parameter DATA_BUS_WIDTH = 16,
 ) (
     // SPI bus connection. These are in the SCK clock domain.
     input cs,
     input sck,
     input mosi,
-    output reg miso,
+    output wire miso,
 
     // System bus connections. These are in the system clock domain.
     input clk,
-    output reg [15:0] data,         // Data frame
+    output reg [(DATA_BUS_WIDTH-1):0] data,         // Data frame
     output reg [(ADDRESS_BUS_WIDTH-1):0] address,      // Address to write data frame
     output wire write_strobe        // Asserts for 1 system clock cycle when new data is ready
 );
+    `include "functions.vh"
 
-    reg [15:0] read_buffer;     // Buffer to read into (in CIN clock domain)
-    reg write_strobe_flag;      // Toggle signal for read (in CIN clock domain)
+    // Buffer to read into (in CIN clock domain)
+    reg [(DATA_BUS_WIDTH-1):0] read_buffer;
 
-    wire write_strobe_sync;      // write_strobe syncronzied to system clock domain
-    reg write_strobe_sync_prev; // Value of write_strobe on previous system clock
-    sync_ss din_sync_ss(clk, 0, write_strobe_flag, write_strobe_sync);   // Synchronize write_strobe to system clock
+    // Toggle signal for read (in CIN clock domain)
+    reg write_toggle;
 
-    assign write_strobe = (write_strobe_sync != write_strobe_sync_prev);
+    // Synchronize write_strobe to system clock
+    sync_ss din_sync_ss(clk, 0, write_toggle, write_toggle_sync);
 
-    always @(posedge clk) begin
-        write_strobe_sync_prev = write_strobe_sync;
-    end
+    // Convert the toggle to a strobe, in system clock domain
+    toggle_to_strobe toggle_to_strobe_1(
+        .clk(clk),
+        .toggle_in(write_toggle_sync),
+        .strobe_out(write_strobe),
+    );
 
-    reg [5:0] bit_index;
-    initial bit_index = 15;
+    reg [(clogb2(DATA_BUS_WIDTH)-1):0] bit_index;
+
+    reg [1:0] state;
+
+    assign miso = state[0];
 
     always @(posedge sck or posedge cs) begin
         // TODO: handle data out
-        miso <= 0;
+//        miso <= 0;
 
         if(cs) begin
-            bit_index <= 15;
-            address <= 14'b11111111111111;
+            bit_index <= (DATA_BUS_WIDTH-1);
+            state <= 0;
         end
         else begin
-            read_buffer[bit_index] <= mosi;
 
             if(bit_index == 0) begin
-                bit_index <= 15;
+                bit_index <= (DATA_BUS_WIDTH-1);
 
-                data <= {read_buffer[15:1], mosi};
-                address <= address + 1;
-                write_strobe_flag <= ~write_strobe_flag;
-            end
-            else begin
-                bit_index <= bit_index - 1;
-            end
-        end
-    end
-
-/*
-    reg Q;
-    reg tmp;
-
-    SR_latch_gate latch_cs(
-        .S(cs),
-        .R(tmp),
-        .Q(Q),
-        .Qbar( ),
-    );
-
-    always @(posedge sck) begin
-        tmp <= 0;
-
-        if(~cs) begin
-            if(Q) begin
-                tmp <= 1;
-
-                read_buffer[15] <= mosi;
-
-                bit_index <= 14;
-                address <= 11'b11111111111;
+                case(state)
+                    0:  // 1. Read address
+                    begin
+                        address <= {read_buffer[15:1], mosi};
+                        state <= state + 1;
+                    end
+                    1:  // 2. Read first byte of data
+                    begin
+                        data <= {read_buffer[15:1], mosi};
+                        write_toggle <= ~write_toggle;
+                        state <= state + 1;
+                    end
+                    2:  // 2. Read data and increment address
+                    begin
+                        data <= {read_buffer[15:1], mosi};
+                        address <= address + 1;
+                        write_toggle <= ~write_toggle;
+                    end
+                endcase
             end
             else begin
                 read_buffer[bit_index] <= mosi;
 
-                if(bit_index == 0) begin
-                    bit_index <= 15;
-
-                    data <= {read_buffer[15:1], mosi};
-                    address <= address + 1;
-                    write_strobe_flag <= ~write_strobe_flag;
-                end
-                else begin
-                    bit_index <= bit_index - 1;
-                end
+                bit_index <= bit_index - 1;
             end
         end
     end
-*/
 endmodule

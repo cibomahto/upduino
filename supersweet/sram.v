@@ -1,15 +1,5 @@
-function integer clogb2;
-    input [31:0] value;
-    begin
-        value = value - 1;
-        for (clogb2 = 0; value > 0; clogb2 = clogb2 + 1) begin
-            value = value >> 1;
-        end
-    end
-endfunction
-
 module sram_bus #(
-    parameter ADDRESS_BUS_WIDTH = 12,
+    parameter ADDRESS_BUS_WIDTH = 16,
     parameter DATA_BUS_WIDTH = 16,
     parameter OUTPUT_COUNT = 10,
 ) (
@@ -38,10 +28,11 @@ module sram_bus #(
 
     output reg [2:0] state,
 );
+    `include "functions.vh"
 
     reg [(ADDRESS_BUS_WIDTH-1):0] ram_address;
     reg [(DATA_BUS_WIDTH-1):0] ram_data_in;
-    wire [15:0] ram_data_out;
+    wire [(DATA_BUS_WIDTH-1):0] ram_data_out;
     reg ram_wren;
     reg ram_chipselect;
 
@@ -59,7 +50,7 @@ module sram_bus #(
 
     SB_SPRAM256KA ramfn_inst1(
         .DATAIN(ram_data_in),
-        .ADDRESS(ram_address),
+        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
         .CHIPSELECT(1'b1),
@@ -113,7 +104,8 @@ module sram_bus #(
 
             last_state <= state;
 
-            if(write_strobe) begin
+            // Note that we are using 1 ram
+            if(write_strobe && (write_address[15:14] == 2'b0)) begin
                 write_address_cache <= write_address;
                 write_data_cache <=write_data;
             end

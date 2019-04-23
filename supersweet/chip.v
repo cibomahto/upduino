@@ -33,20 +33,25 @@ module chip (
     output DMX_OUT,
 );
 
-    localparam ADDRESS_BUS_WIDTH = 14;
+    `include "functions.vh"
+
+    localparam ADDRESS_BUS_WIDTH = 16;
     localparam DATA_BUS_WIDTH = 16;
     localparam OUTPUT_COUNT = 10;
 
-    // For Teddy Lo Waking Life
-    localparam OUT_1_WORDS = (112*3*8); // 112 LEDs = 336 16-bit channels/board, and 8 boards.
-    localparam OUT_2_WORDS = (112*3*8);
-    localparam OUT_3_WORDS = (112*3*8);
-    localparam OUT_4_WORDS = (112*3*8);
+    // Output counts, in words
+    reg [(ADDRESS_BUS_WIDTH-1):0] output_word_counts [(clogb2(OUTPUT_COUNT)-1):0];
+    initial begin
+        $readmemh("output_word_counts.list", output_word_counts);
+    end
 
-    localparam OUT_1_OFFSET = 0;
-    localparam OUT_2_OFFSET = OUT_1_OFFSET + OUT_1_WORDS;
-    localparam OUT_3_OFFSET = OUT_2_OFFSET + OUT_2_WORDS;
-    localparam OUT_4_OFFSET = OUT_3_OFFSET + OUT_3_WORDS;
+    reg [(ADDRESS_BUS_WIDTH-1):0] output_start_addresses [(clogb2(OUTPUT_COUNT)-1):0];
+    initial begin
+        $readmemh("output_start_addresses.list", output_start_addresses);
+    end
+
+    // Reset signals for the outputs
+    reg [(OUTPUT_COUNT-1):0] output_resets;
 
     wire clk;
     wire rst;
@@ -54,18 +59,52 @@ module chip (
     assign rst = 0; // TODO: Hardware reset input
 
     // Configure the HFOSC
-	SB_HFOSC u_hfosc (
+	SB_HFOSC #(
+        .CLKHF_DIV("0b00"), // 00: 48MHz, 01: 24MHz, 10: 12MHz, 11: 6MHz
+    ) u_hfosc (
        	.CLKHFPU(1'b1),
        	.CLKHFEN(1'b1),
         .CLKHF(clk)
     );
-    defparam u_hfosc.CLKHF_DIV = "0b00"; // 00: 48MHz, 01: 24MHz, 10: 12MHz, 11: 6MHz
 
-    wire [15:0] spi_data;
+
+    wire [(DATA_BUS_WIDTH-1):0] spi_data;
     wire [(ADDRESS_BUS_WIDTH-1):0] spi_word_address;
     wire spi_write_strobe;
 
-    spi_in spi_in_1(
+    reg address_write;
+    reg data_write;
+
+    // Map the configuration registers into memory
+    always @(posedge clk) begin
+        address_write <= 0;
+        data_write <= 0;
+
+        output_resets <= 0;
+
+        if(spi_write_strobe) begin
+            if(spi_word_address[15:4] == 12'h800) begin
+                output_word_counts[spi_word_address[3:0]] <= spi_data;
+                address_write <= 1;
+
+                // Automatically reset the module
+                output_resets[spi_word_address[3:0]] <= 1;
+            end
+            if(spi_word_address[15:4] == 12'h801) begin
+                output_start_addresses[spi_word_address[3:0]] <= spi_data;
+                data_write <= 1;
+
+                // Automatically reset the module
+                output_resets[spi_word_address[3:0]] <= 1;
+            end
+        end
+    end
+
+
+    spi_in #(
+        .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
+        .DATA_BUS_WIDTH(DATA_BUS_WIDTH),
+    ) spi_in_1(
         .cs(LED_CS),
         .sck(LED_SCK),
         .mosi(LED_MOSI),
@@ -76,7 +115,6 @@ module chip (
         .address(spi_word_address),
         .write_strobe(spi_write_strobe)
     );
-    defparam spi_in_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
     // Connection array for the outputs
     wire [(ADDRESS_BUS_WIDTH-1):0] read_addresses [(OUTPUT_COUNT-1):0];
@@ -90,16 +128,18 @@ module chip (
     wire [(OUTPUT_COUNT-1):0] data_outputs;
     wire [(OUTPUT_COUNT-1):0] clock_outputs;
 
+
     generate
         genvar i;
         for (i=0; i<(OUTPUT_COUNT); i=i+1) begin
             icnd2110_out #(
                 .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
-                .WORD_COUNT(OUT_1_WORDS),
-                .START_ADDRESS(OUT_1_OFFSET),
             ) i_icnd2110_out (
                 .clk(clk),
-                .rst(rst),
+                .rst(output_resets[i]),
+
+                .word_count(output_word_counts[i]),
+                .start_address(output_start_addresses[i]),
        
                 .read_address(read_addresses[i]),
                 .read_request(read_requests[i]),
@@ -144,8 +184,8 @@ module chip (
         .state(state),
     );
 
-    assign DATA_1 = data_outputs[0];
-    assign DATA_2 = data_outputs[1];
+//    assign DATA_1 = data_outputs[0];
+//    assign DATA_2 = data_outputs[1];
     assign DATA_3 = data_outputs[2];
     assign DATA_4 = data_outputs[3];
     assign DATA_5 = data_outputs[4];
@@ -155,7 +195,7 @@ module chip (
     assign DATA_9 = data_outputs[8];
     assign DATA_10 = data_outputs[9];
 
-    assign CLOCK_1 = clock_outputs[0];
+//    assign CLOCK_1 = clock_outputs[0];
     assign CLOCK_2 = clock_outputs[1];
     assign CLOCK_3 = clock_outputs[2];
     assign CLOCK_4 = clock_outputs[3];
@@ -167,6 +207,9 @@ module chip (
     assign CLOCK_10 = clock_outputs[9];
 
     // Debug outputs
+    assign DATA_1 = data_write;
+    assign CLOCK_1 = address_write;
+    assign DATA_2 = spi_write_strobe;
     //assign DATA_3 = spi_write_strobe;
     //assign CLOCK_3 = read_request_1;
     //assign DATA_5 =  _strobe[0];
