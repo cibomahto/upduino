@@ -34,13 +34,14 @@ module chip (
 );
 
     localparam ADDRESS_BUS_WIDTH = 14;
-    localparam OUTPUT_COUNT = 4;
+    localparam DATA_BUS_WIDTH = 16;
+    localparam OUTPUT_COUNT = 10;
 
     // For Teddy Lo Waking Life
     localparam OUT_1_WORDS = (112*3*8); // 112 LEDs = 336 16-bit channels/board, and 8 boards.
     localparam OUT_2_WORDS = (112*3*8);
-    localparam OUT_3_WORDS = (112*3*4);
-    localparam OUT_4_WORDS = (8*8*3/2); // Extra 8x8 matrix of WS2812 LEDs
+    localparam OUT_3_WORDS = (112*3*8);
+    localparam OUT_4_WORDS = (112*3*8);
 
     localparam OUT_1_OFFSET = 0;
     localparam OUT_2_OFFSET = OUT_1_OFFSET + OUT_1_WORDS;
@@ -77,52 +78,47 @@ module chip (
     );
     defparam spi_in_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
-    wire [(ADDRESS_BUS_WIDTH-1):0] read_address_1;
-    wire read_request_1;
-    wire read_finished_strobe_1;
+    // Connection array for the outputs
+    wire [(ADDRESS_BUS_WIDTH-1):0] read_addresses [(OUTPUT_COUNT-1):0];
+    wire [(OUTPUT_COUNT-1):0] read_requests;
+    wire [(OUTPUT_COUNT-1):0] read_finished_strobes;
 
+    // The data output from the ram is shared
     wire [15:0] read_data;
 
-    icnd2110_out icnd2110_out_1(
-        .clk(clk),
-        .rst(rst),
+    // And wire arrays to map to the outputs
+    wire [(OUTPUT_COUNT-1):0] data_outputs;
+    wire [(OUTPUT_COUNT-1):0] clock_outputs;
+
+    generate
+        genvar i;
+        for (i=0; i<(OUTPUT_COUNT); i=i+1) begin
+            icnd2110_out #(
+                .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
+                .WORD_COUNT(OUT_1_WORDS),
+                .START_ADDRESS(OUT_1_OFFSET),
+            ) i_icnd2110_out (
+                .clk(clk),
+                .rst(rst),
        
-        .read_address(read_address_1),
-        .read_request(read_request_1),
-        .read_data(read_data),
-        .read_finished_strobe(read_finished_strobe_1),
+                .read_address(read_addresses[i]),
+                .read_request(read_requests[i]),
+                .read_data(read_data),
+                .read_finished_strobe(read_finished_strobes[i]),
 
-        .data_out(DATA_1),
-        .clock_out(CLOCK_1),
-    );
-    defparam icnd2110_out_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
-    defparam icnd2110_out_1.WORD_COUNT = OUT_1_WORDS;
-    defparam icnd2110_out_1.START_ADDRESS = OUT_1_OFFSET;
-
-    wire [(ADDRESS_BUS_WIDTH-1):0] read_address_2;
-    wire read_request_2;
-    wire read_finished_strobe_2;
-
-    icnd2110_out icnd2110_out_2(
-        .clk(clk),
-        .rst(rst),
-        
-        .read_address(read_address_2),
-        .read_request(read_request_2),
-        .read_data(read_data),
-        .read_finished_strobe(read_finished_strobe_2),
-
-        .data_out(DATA_2),
-        .clock_out(CLOCK_2),
-    );
-    defparam icnd2110_out_2.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
-    defparam icnd2110_out_2.WORD_COUNT = OUT_2_WORDS;
-    defparam icnd2110_out_2.START_ADDRESS = OUT_2_OFFSET;
+                .data_out(data_outputs[i]),
+                .clock_out(clock_outputs[i]),
+            );
+        end
+    endgenerate
 
 
     wire [2:0] state;
 
-    sram_bus sram_bus_1(
+    sram_bus #(
+        .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
+        .OUTPUT_COUNT(OUTPUT_COUNT),
+    ) sram_bus_1(
         .clk(clk),
         .rst(rst),
 
@@ -130,48 +126,62 @@ module chip (
         .write_data(spi_data),
         .write_strobe(spi_write_strobe),
 
-        .read_address_1(read_address_1),
-        .read_request_1(read_request_1),
-        .read_finished_strobe_1(read_finished_strobe_1),
-
-        .read_address_2(read_address_2),
-        .read_request_2(read_request_2),
-        .read_finished_strobe_2(read_finished_strobe_2),
-
+        .read_requests(read_requests),
+        .read_finished_strobes(read_finished_strobes),
         .read_data(read_data),
+
+        .read_address_0(read_addresses[0]),
+        .read_address_1(read_addresses[1]),
+        .read_address_2(read_addresses[2]),
+        .read_address_3(read_addresses[3]),
+        .read_address_4(read_addresses[4]),
+        .read_address_5(read_addresses[5]),
+        .read_address_6(read_addresses[6]),
+        .read_address_7(read_addresses[7]),
+        .read_address_8(read_addresses[8]),
+        .read_address_9(read_addresses[9]),
 
         .state(state),
     );
-    defparam sram_bus_1.ADDRESS_BUS_WIDTH = ADDRESS_BUS_WIDTH;
 
+    assign DATA_1 = data_outputs[0];
+    assign DATA_2 = data_outputs[1];
+    assign DATA_3 = data_outputs[2];
+    assign DATA_4 = data_outputs[3];
+    assign DATA_5 = data_outputs[4];
+    assign DATA_6 = data_outputs[5];
+    assign DATA_7 = data_outputs[6];
+    assign DATA_8 = data_outputs[7];
+    assign DATA_9 = data_outputs[8];
+    assign DATA_10 = data_outputs[9];
+
+    assign CLOCK_1 = clock_outputs[0];
+    assign CLOCK_2 = clock_outputs[1];
+    assign CLOCK_3 = clock_outputs[2];
+    assign CLOCK_4 = clock_outputs[3];
+    assign CLOCK_5 = clock_outputs[4];
+    assign CLOCK_6 = clock_outputs[5];
+    assign CLOCK_7 = clock_outputs[6];
+    assign CLOCK_8 = clock_outputs[7];
+    assign CLOCK_9 = clock_outputs[8];
+    assign CLOCK_10 = clock_outputs[9];
 
     // Debug outputs
-    assign DATA_3 = spi_write_strobe;
-    assign CLOCK_3 = read_request_1;
-    assign DATA_5 =  read_finished_strobe_1;
-    assign CLOCK_5 = read_request_2;
-    assign DATA_7 =  read_finished_strobe_2;
-    assign CLOCK_7 = state[2];
-    assign DATA_9 = state[1];
-    assign CLOCK_9 = state[0];
+    //assign DATA_3 = spi_write_strobe;
+    //assign CLOCK_3 = read_request_1;
+    //assign DATA_5 =  _strobe[0];
+    //assign CLOCK_5 = read_request[1];
+    //assign DATA_7 =  _strobe[1];
+    //assign CLOCK_7 = state[2];
+    //assign DATA_9 = state[1];
+    //assign CLOCK_9 = state[0];
 
     // Configure DMX as passthrough
     assign DMX_OUT = DMX_IN;
 
     // LEDs do nothing
-    assign RGB0 = 0;
-    assign RGB1 = 1;
-    assign RGB2 = 0;
-
-    // Stub disabled outputs
-    assign DATA_4 = 0;
-    assign CLOCK_4 = 0;
-    assign DATA_6 = 0;
-    assign CLOCK_6 = 0;
-    assign DATA_8 = 0;
-    assign CLOCK_8 = 0;
-    assign DATA_10 = 0;
-    assign CLOCK_10 = 0;
-
+    assign RGB0 = ~1;
+    assign RGB1 = ~0;
+    assign RGB2 = ~1;
 
 endmodule

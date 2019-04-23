@@ -11,7 +11,7 @@ module icnd2110_out #(
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read
 
-    input [15:0] read_data,                         // Incoming data
+    input [15:0] read_data,                             // Incoming data
     input read_finished_strobe,
 
     output reg data_out,
@@ -52,7 +52,6 @@ module icnd2110_out #(
 
     always @(posedge clk) begin
         clockdiv <= clockdiv + 1;
-
     end
 
     assign clock_out = clockdiv[3];

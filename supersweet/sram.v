@@ -1,7 +1,17 @@
+function integer clogb2;
+    input [31:0] value;
+    begin
+        value = value - 1;
+        for (clogb2 = 0; value > 0; clogb2 = clogb2 + 1) begin
+            value = value >> 1;
+        end
+    end
+endfunction
+
 module sram_bus #(
     parameter ADDRESS_BUS_WIDTH = 12,
     parameter DATA_BUS_WIDTH = 16,
-
+    parameter OUTPUT_COUNT = 10,
 ) (
     input rst,
     input clk,
@@ -10,15 +20,21 @@ module sram_bus #(
     input [(DATA_BUS_WIDTH-1):0] write_data,
     input write_strobe,
 
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_1,
-    input read_request_1,
-    output reg read_finished_strobe_1,
-
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_2,
-    input read_request_2,
-    output reg read_finished_strobe_2,
-
+    input [(OUTPUT_COUNT-1):0] read_requests,
+    output reg [(OUTPUT_COUNT-1):0] read_finished_strobes,
     output reg [(DATA_BUS_WIDTH-1):0] read_data,
+
+    // TODO: How to parameterize this?
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_0,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_1,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_2,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_3,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_4,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_5,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_6,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_7,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_8,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_9,
 
     output reg [2:0] state,
 );
@@ -28,6 +44,18 @@ module sram_bus #(
     wire [15:0] ram_data_out;
     reg ram_wren;
     reg ram_chipselect;
+
+    wire [(ADDRESS_BUS_WIDTH-1):0] read_addresses [OUTPUT_COUNT];
+    assign read_addresses[0] = read_address_0;
+    assign read_addresses[1] = read_address_1;
+    assign read_addresses[2] = read_address_2;
+    assign read_addresses[3] = read_address_3;
+    assign read_addresses[4] = read_address_4;
+    assign read_addresses[5] = read_address_5;
+    assign read_addresses[6] = read_address_6;
+    assign read_addresses[7] = read_address_7;
+    assign read_addresses[8] = read_address_8;
+    assign read_addresses[9] = read_address_9;
 
     SB_SPRAM256KA ramfn_inst1(
         .DATAIN(ram_data_in),
@@ -42,14 +70,15 @@ module sram_bus #(
         .DATAOUT(ram_data_out),
     );
 
+    // Must be large enough to hold OUTPUT_COUNT
+    reg [(clogb2(OUTPUT_COUNT))-1:0] last_read;
+
     reg [2:0] last_state;
     reg [2:0] counter;
 
     localparam STATE_IDLE = 0;
     localparam STATE_WRITE = 1;
-    localparam STATE_READ_1 = 2;
-    localparam STATE_READ_2 = 3;
-
+    localparam STATE_READ = 2;
 
     reg write_finished_strobe;
     wire write_pending;
@@ -64,6 +93,8 @@ module sram_bus #(
         .q(write_pending),
     );
 
+    integer i;
+
     always @(posedge clk) begin
         if(rst) begin
             state <= STATE_IDLE;
@@ -76,10 +107,9 @@ module sram_bus #(
         end
         else begin
             ram_wren <= 0;
-            read_finished_strobe_1 <= 0;
-            read_finished_strobe_2 <= 0;
 
             write_finished_strobe <= 0;
+            read_finished_strobes <= 0;
 
             last_state <= state;
 
@@ -102,14 +132,16 @@ module sram_bus #(
     
                     state <= STATE_WRITE;
                 end
-                else if(read_request_1 && (last_state != STATE_READ_1)) begin
-                    ram_address <= read_address_1;
-                    state <= STATE_READ_1;
+                else if(read_requests != 0) begin
+                    for(i = 0; i < OUTPUT_COUNT; i++) begin
+                        if(read_requests[i] == 1) begin
+                            ram_address <= read_addresses[i];
+                            last_read <= i;
+                            state <= STATE_READ;
+                        end
+                    end
                 end
-                else if(read_request_2 && (last_state != STATE_READ_2)) begin
-                    ram_address <= read_address_2;
-                    state <= STATE_READ_2;
-                end
+
             end
             STATE_WRITE:
             begin
@@ -117,23 +149,13 @@ module sram_bus #(
                 write_finished_strobe <= 1;
                 state <= STATE_IDLE;
             end
-            STATE_READ_1:
+            STATE_READ:
             begin
                 counter <= counter + 1;
 
                 if(counter == 1) begin
                     read_data <= ram_data_out;
-                    read_finished_strobe_1 <= 1;
-                    state <= STATE_IDLE;
-                end
-            end
-            STATE_READ_2:
-            begin
-                counter <= counter + 1;
-
-                if(counter == 1) begin
-                    read_data <= ram_data_out;
-                    read_finished_strobe_2 <= 1;
+                    read_finished_strobes[last_read] <= 1;
                     state <= STATE_IDLE;
                 end
             end
