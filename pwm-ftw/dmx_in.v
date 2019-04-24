@@ -15,23 +15,23 @@
 //    detected.
 parameter MAX_CHANNEL_BITS = 8; // Max. number of channels supported = 2^(n+1)
 
-parameter MINIMUM_BREAK_COUNT = ((4400-440)/2);  // Minimum clock cycles for break (92uS)
-parameter MINIMUM_MAB_COUNT = ((576-58)/2);      // Minimum clock cycles for 'MAB' (12uS)
-parameter BIT_COUNT = (192/2);                   // Clock cycles for a bit (4uS)
+parameter CHANNEL_COUNT = 8;
+
+parameter MINIMUM_BREAK_COUNT = ((4400-440));  // Minimum clock cycles for break (92uS)
+parameter MINIMUM_MAB_COUNT = ((576-58));      // Minimum clock cycles for 'MAB' (12uS)
+parameter BIT_COUNT = (192);                   // Clock cycles for a bit (4uS)
 
 
 module dmx_in(
-    input clock,                            // System clock (48 MHz?)
-    input reset,                            // System reset
+    input clk,                            // System clock (48 MHz?)
+    input rst,                            // System reset
 
     input dmx_in,                           // DMX bit input
+    output reg dmx_out,                     // Auto-addressing DMX output
 
-    output [7:0] data,                      // Data frame
-    output [MAX_CHANNEL_BITS:0] channel,    // Address to write data frame
-    output write_strobe,                    // Asserts for 1 system clock when data is ready to write
-
-    output dmx_out,                         // Auto-addressing DMX output
-    output debug,                           // Debug state output
+    output reg [7:0] data,                  // Data frame
+    output reg [MAX_CHANNEL_BITS:0] channel, // Address to write data frame
+    output reg write_strobe,                // Asserts for 1 system clock when data is ready to write
 );
 
     reg [3:0] state;                        // Machine stat
@@ -41,27 +41,13 @@ module dmx_in(
     reg [7:0] read_byte;                    // Register for holding the current read byte
     reg start_code;                         // If true, read this byte as a start code
 
-    reg [MAX_CHANNEL_BITS:0] channel_reg;   // Buffered output channel
-    reg [7:0] data_reg;                     // Buffered output data
-    reg write_strobe_reg;                   // Buffer strobe
-    assign channel = channel_reg;
-    assign data = data_reg;
-    assign write_strobe = write_strobe_reg;
-
-    reg dmx_out_reg;                        // Buffered auto-addressing output
-//    assign dmx_out = dmx_out_reg;
-    assign dmx_out = write_strobe_reg;
-
-    reg debug_reg;
-    assign debug = debug_reg;
-
     // Synch the DMX input to the system clock. The system clock shoud be much
     // faster than 250Kbs.
     wire dmx_sync;
-    sync_ss in_sync(clock, reset, dmx_in, dmx_sync);
+    sync_ss in_sync(clk, rst, dmx_in, dmx_sync);
 
-    always @(posedge clock)
-        if(reset) begin
+    always @(posedge clk)
+        if(rst) begin
             state <= 0;
             count <= 0;
             byte_index <= 0;
@@ -69,26 +55,35 @@ module dmx_in(
             read_byte <= 0;
             start_code <= 0;
 
-            channel_reg <= 0;
-            data_reg <= 0;
-            write_strobe_reg <= 0;
+            channel <= 0;
+            data <= 0;
+            write_strobe <= 0;
 
-            dmx_out_reg <= 0;
+            dmx_out <= 0;
         end
         else begin
             count <= count + 1;
 
-            write_strobe_reg <= 0;
-            dmx_out_reg <= 0;
-            debug_reg <= 0;
+            write_strobe <= 0;
+
+            case(state)
+                0,1,2,3: // Pass thru DMX signal while waiting for idle, break, MAB
+                begin
+                    dmx_out <= dmx_sync;
+                end
+                4,5,6,7,8:
+                begin
+                    // Don't pass the data bytes that we want to consume
+                    if((start_code == 1) || (byte_index > (CHANNEL_COUNT - 1)))
+                        dmx_out <= dmx_sync;
+                end
+            endcase
 
             // If the line is held low for long enough, always count it as
             // a break, and reset the state machine.
             if((dmx_sync == 0) && (count == MINIMUM_BREAK_COUNT)) begin
                 count <= 0;
                 state <= 1;
-
-                debug_reg <= 1;
             end
             else begin
                 case(state)
@@ -111,8 +106,6 @@ module dmx_in(
                         if(count == MINIMUM_MAB_COUNT) begin
                             count <= 0;
                             state <= state + 1;
-
-                            debug_reg <= 1;
                         end
                         else if(dmx_sync == 0) begin
                             count <= 0;
@@ -125,13 +118,11 @@ module dmx_in(
                             count <= 0;
                             state <= state + 1;
 
-                            channel_reg <= 0;
+                            channel <= 0;
                             read_byte <= 0;
                             byte_index <= 0;
                             bit_index <= 0;
                             start_code <= 1;
-
-                            debug_reg <= 1;
                         end
                     end
                     4:  // Wait 1/2 bit time, then sample start bit
@@ -139,8 +130,6 @@ module dmx_in(
                         if(count == (BIT_COUNT*0.5)) begin
                             count <= (BIT_COUNT*0.5);
                             state <= 0;
-
-                            debug_reg <= 1;
                            
                             // If we got a valid start bit, continue to next
                             // bit sample.
@@ -155,8 +144,6 @@ module dmx_in(
                     begin
                         if(count == BIT_COUNT) begin
                             count <= 0;
-
-                            debug_reg <= 1;
 
                             read_byte[bit_index] <= dmx_sync;
                             bit_index <= bit_index + 1;
@@ -173,8 +160,6 @@ module dmx_in(
                             count <= (BIT_COUNT*8.5);   // Set the counter to the start of this discarded bit
                             state <= 0;
 
-                            debug_reg <= 1;
-
                             if(dmx_sync == 1) begin
                                 count <= 0;
                                 state <= state + 1;
@@ -186,8 +171,6 @@ module dmx_in(
                         if(count == BIT_COUNT) begin
                             count <= (BIT_COUNT*9.5);   // Set the counter to the start of this discarded bit
                             state <= 0;
-
-                            debug_reg <= 1;
 
                             if(dmx_sync == 1) begin
                                 count <= 0;
@@ -201,16 +184,14 @@ module dmx_in(
                                     if(read_byte != 8'h00) begin
                                         count <= 0;
                                         state <= 0;
-
-                                        debug_reg <= 1;
                                     end
                                 end
                                 // Otherwise, store the channel and address,
                                 // and strobe the output.
                                 else begin
-                                    data_reg <= read_byte;
-                                    channel_reg <= byte_index;
-                                    write_strobe_reg <= 1;
+                                    data <= read_byte;
+                                    channel <= byte_index;
+                                    write_strobe <= 1;
 
                                     byte_index <= byte_index + 1;
                                 end
@@ -221,8 +202,6 @@ module dmx_in(
                     begin
                         if(dmx_sync == 0) begin
                             count <= 0;
-
-                            debug_reg <= 1;
 
                             state <= 4;
 
