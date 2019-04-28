@@ -36,14 +36,14 @@ module chip (
 
     // PWM output wires
     wire [(PWM_CHANNELS-1):0] outputs;
-    assign EN_IN_1 = outputs[7];
-    assign EN_IN_2 = outputs[6];
-    assign EN_IN_3 = outputs[5];
-    assign EN_IN_4 = outputs[4];
-    assign EN_IN_5 = outputs[3];
-    assign EN_IN_6 = outputs[2];
-    assign EN_IN_7 = outputs[1];
-    assign EN_IN_8 = outputs[0];
+    assign EN_IN_1 = outputs[0];
+    assign EN_IN_2 = outputs[1];
+    assign EN_IN_3 = outputs[2];
+    assign EN_IN_4 = outputs[3];
+    assign EN_IN_5 = outputs[4];
+    assign EN_IN_6 = outputs[5];
+    assign EN_IN_7 = outputs[6];
+    assign EN_IN_8 = outputs[7];
 
     // PWM output enable
     assign OE = 0;

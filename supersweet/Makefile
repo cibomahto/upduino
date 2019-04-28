@@ -7,6 +7,7 @@ VERILOG_FILES = \
 	spi_in.v \
 	ws2812_out.v \
 	icnd2110_out.v \
+	apa102_out.v \
 	sram.v \
 	srff.v \
 	fifo.v \
@@ -51,6 +52,10 @@ stats: $(TARGET).json $(TARGET).asc
 .PHONY: flashpy
 flashpy: $(TARGET).bin
 	./flash.py $(TARGET).bin
+
+.PHONY: upload
+upload: $(TARGET).bin
+	./upload.sh
 
 .PHONY: clean
 clean:

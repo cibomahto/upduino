@@ -53,7 +53,7 @@ module chip (
     // Reset signals for the outputs
     reg [(OUTPUT_COUNT-1):0] output_resets;
     initial begin
-        output_resets <= 10'b1111111111;
+        output_resets <= 10'b0000000000;
     end
 
     wire clk;
@@ -122,9 +122,10 @@ module chip (
     generate
         genvar i;
         for (i=0; i<(OUTPUT_COUNT); i=i+1) begin
-            icnd2110_out #(
+            //icnd2110_out #(
+            apa102_out #(
                 .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
-            ) i_icnd2110_out (
+            ) i_apa102_out (
                 .clk(clk),
                 .rst(output_resets[i]),
 
@@ -208,7 +209,7 @@ module chip (
 
     // LEDs do nothing
     assign RGB0 = ~1;
-    assign RGB1 = ~0;
-    assign RGB2 = ~1;
+    assign RGB1 = ~1;
+    assign RGB2 = ~0;
 
 endmodule
