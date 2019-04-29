@@ -56,7 +56,7 @@ module apa102_out #(
     end
 
 
-    always @(negedge clockdiv[2]) begin
+    always @(negedge clockdiv[0]) begin
         if(rst) begin
             state <= 0;
 
@@ -81,8 +81,8 @@ module apa102_out #(
                 clock_out <= counter[0];
                 
                 if(counter == 0) begin
-                    words_remaining <= (144*1.5*3/2); //word_count;
-                    read_address <= (0); //start_address;
+                    words_remaining <= word_count;
+                    read_address <= start_address;
 
                     // Make a bogus read to get the fifo started
                     read_fifo_toggle <= ~read_fifo_toggle;
