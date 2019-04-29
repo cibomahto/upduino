@@ -18,9 +18,10 @@ module apa102_out #(
 );
 
     reg [3:0] state;
-    reg [7:0] counter;
+    reg [10:0] counter;
 
     reg [15:0] words_remaining;         // Counter of how many words are left to send
+    reg [3:0] val_index;                // Counter from 0..15
 
     reg [4:0] clockdiv;
 
@@ -35,7 +36,6 @@ module apa102_out #(
 
     wire fifo_1_full;
     wire [15:0] val;
-    reg [3:0] val_index;
 
     fifo fifo_1(
         .clk(clk),
@@ -59,7 +59,9 @@ module apa102_out #(
     always @(negedge clockdiv[2]) begin
         if(rst) begin
             state <= 0;
+
             data_out <= 0;
+            clock_out <= 0;
         end
         else begin
             data_out <= 0;
@@ -79,8 +81,8 @@ module apa102_out #(
                 clock_out <= counter[0];
                 
                 if(counter == 0) begin
-                    words_remaining <= (144*1.5*3/2);//word_count;
-                    read_address <= (0);//start_address;
+                    words_remaining <= (144*1.5*3/2); //word_count;
+                    read_address <= (0); //start_address;
 
                     // Make a bogus read to get the fifo started
                     read_fifo_toggle <= ~read_fifo_toggle;
@@ -177,7 +179,7 @@ module apa102_out #(
             begin
                 counter <= counter + 1;
 
-                if(counter == 240) begin
+                if(counter == 1024) begin
                     state <= 0;
                     counter <= 0;
                 end
