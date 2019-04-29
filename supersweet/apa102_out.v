@@ -124,43 +124,32 @@ module apa102_out #(
             begin
                 counter <= counter + 1;
 
-                /*
-                // TODO: swizzle the bits to turn RGB into BGR
-                if(counter[5:4] == 2'b00) // B
-                    data_out <= 0;
-                if(counter[5:4] == 2'b01) // G
-                    data_out <= 0;
-                if(counter[5:4] == 2'b10) // R
-                    data_out <= 1;
-                */
-
                 data_out <= val[15 - val_index];
                 clock_out <= counter[0];
 
-                if(counter[0] == 1)
-                    val_index <= val_index + 1;
+                if(counter[0] == 1) begin
+                    if(counter == (24*2-1)) begin
+                        counter <= 0;
 
-                // TODO: Enforce somehow that we're outputting a multiple of
-                // 3 bytes
-                if(val_index == 15) begin
+                        if(words_remaining == 0)
+                            state <= state + 1;
+                        else
+                            state <= state - 1;
+                    end
+
+                    // TODO: Enforce somehow that we're outputting a multiple of 3 bytes
                     // Note that we transmit some junk on the last pixel if
                     // the words_remaining boundary isn't 24-bit aligned
-                    if(words_remaining != 0) begin
+                    if((val_index == 15) && (words_remaining != 0)) begin
                         read_fifo_toggle <= ~read_fifo_toggle;
-
+    
                         words_remaining <= words_remaining - 1;
                         read_address <= read_address + 1;
                         val_index <= 0;
                     end
-                end
-
-                if(counter == (24*2-1)) begin
-                    counter <= 0;
-
-                    if(words_remaining == 0)
-                        state <= state + 1;
-                    else
-                        state <= state - 1;
+                    else begin
+                        val_index <= val_index + 1;
+                    end
                 end
             end
             4:  // Frame end (32 bits of 1)
