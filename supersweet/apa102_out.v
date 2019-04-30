@@ -49,7 +49,7 @@ module apa102_out #(
         .read_data(val),
     );
 
-    assign read_request = ~fifo_1_full;
+    assign read_request = ~fifo_1_full & ~rst;
 
     wire pixel_clock;
     clock_divider clock_divider_1(

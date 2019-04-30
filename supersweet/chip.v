@@ -90,10 +90,10 @@ module chip (
                 output_start_addresses[spi_word_address[3:0]] <= spi_data;
             end
             else if(spi_word_address[15:4] == 12'h802) begin
-                output_resets[spi_word_address[3:0]] <= spi_data;
+                output_resets[spi_word_address[3:0]] <= spi_data[0];
             end
             else if(spi_word_address[15:4] == 12'h803) begin
-                output_clock_divisors[spi_word_address[3:0]] <= spi_data;
+                output_clock_divisors[spi_word_address[3:0]] <= spi_data[1:0];
             end
         end
     end
