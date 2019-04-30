@@ -12,6 +12,7 @@ VERILOG_FILES = \
 	srff.v \
 	fifo.v \
 	toggle_to_strobe.v \
+	clock_divider.v \
 	pll.v
 
 PIN_CONFIG_FILE = supersweet_reva.pcf

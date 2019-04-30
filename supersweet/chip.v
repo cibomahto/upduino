@@ -50,6 +50,11 @@ module chip (
         $readmemh("output_start_addresses.list", output_start_addresses);
     end
 
+    reg [1:0] output_clock_divisors [(OUTPUT_COUNT-1):0];
+    initial begin
+        $readmemh("output_clock_divisors.list", output_clock_divisors);
+    end
+
     // Reset signals for the outputs
     reg [(OUTPUT_COUNT-1):0] output_resets;
     initial begin
@@ -86,6 +91,9 @@ module chip (
             end
             else if(spi_word_address[15:4] == 12'h802) begin
                 output_resets[spi_word_address[3:0]] <= spi_data;
+            end
+            else if(spi_word_address[15:4] == 12'h803) begin
+                output_clock_divisors[spi_word_address[3:0]] <= spi_data;
             end
         end
     end
@@ -131,6 +139,7 @@ module chip (
 
                 .word_count(output_word_counts[i]),
                 .start_address(output_start_addresses[i]),
+                .clock_divisor(output_clock_divisors[i]),
        
                 .read_address(read_addresses[i]),
                 .read_request(read_requests[i]),
@@ -196,13 +205,6 @@ module chip (
     assign CLOCK_8 = clock_outputs[7];
     assign CLOCK_9 = clock_outputs[8];
     assign CLOCK_10 = clock_outputs[9];
-
-    // Debug outputs
-//    assign DATA_1 = output_start_addresses[0][3];
-//    assign CLOCK_1 = output_start_addresses[0][2];
-//    assign DATA_2 = output_start_addresses[0][1];
-//    assign CLOCK_2 = output_start_addresses[0][0];
-
 
     // Configure DMX as passthrough
     assign DMX_OUT = DMX_IN;

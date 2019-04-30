@@ -7,6 +7,7 @@ module apa102_out #(
 
     input [15:0] word_count,
     input [15:0] start_address,
+    input [1:0] clock_divisor,
 
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read
@@ -23,7 +24,6 @@ module apa102_out #(
     reg [15:0] words_remaining;         // Counter of how many words are left to send
     reg [3:0] val_index;                // Counter from 0..15
 
-    reg [4:0] clockdiv;
 
     reg read_fifo_toggle;
     wire read_fifo_strobe;
@@ -51,12 +51,16 @@ module apa102_out #(
 
     assign read_request = ~fifo_1_full;
 
-    always @(posedge clk) begin
-        clockdiv <= clockdiv + 1;
-    end
+    wire pixel_clock;
+    clock_divider clock_divider_1(
+        .clk(clk),
+        .rst(rst),
 
+        .divisor(clock_divisor),
+        .clk_out(pixel_clock),
+    );
 
-    always @(negedge clockdiv[0]) begin
+    always @(negedge pixel_clock) begin
         if(rst) begin
             state <= 0;
 
