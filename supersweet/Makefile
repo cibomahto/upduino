@@ -5,8 +5,6 @@ VERILOG_FILES = \
 	sync.v \
 	sr_latch_gate.v \
 	spi_in.v \
-	ws2812_out.v \
-	icnd2110_out.v \
 	apa102_out.v \
 	sram.v \
 	srff.v \

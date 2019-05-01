@@ -18,13 +18,13 @@ module sram_bus #(
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_0,
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_1,
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_2,
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_3,
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_4,
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_5,
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_6,
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_7,
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_8,
-    input [(ADDRESS_BUS_WIDTH-1):0] read_address_9,
+//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_3,
+//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_4,
+//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_5,
+//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_6,
+//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_7,
+//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_8,
+//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_9,
 
     output reg [2:0] state,
 );
@@ -32,7 +32,8 @@ module sram_bus #(
 
     reg [(ADDRESS_BUS_WIDTH-1):0] ram_address;
     reg [(DATA_BUS_WIDTH-1):0] ram_data_in;
-    wire [(DATA_BUS_WIDTH-1):0] ram_data_out;
+    //wire [(DATA_BUS_WIDTH-1):0] ram_data_out;
+    wire [(DATA_BUS_WIDTH-1):0] ram_data_out [1:0];
     reg ram_wren;
     reg ram_chipselect;
 
@@ -40,29 +41,43 @@ module sram_bus #(
     assign read_addresses[0] = read_address_0;
     assign read_addresses[1] = read_address_1;
     assign read_addresses[2] = read_address_2;
-    assign read_addresses[3] = read_address_3;
-    assign read_addresses[4] = read_address_4;
-    assign read_addresses[5] = read_address_5;
-    assign read_addresses[6] = read_address_6;
-    assign read_addresses[7] = read_address_7;
-    assign read_addresses[8] = read_address_8;
-    assign read_addresses[9] = read_address_9;
+//    assign read_addresses[3] = read_address_3;
+//    assign read_addresses[4] = read_address_4;
+//    assign read_addresses[5] = read_address_5;
+//    assign read_addresses[6] = read_address_6;
+//    assign read_addresses[7] = read_address_7;
+//    assign read_addresses[8] = read_address_8;
+//    assign read_addresses[9] = read_address_9;
 
     SB_SPRAM256KA ramfn_inst1(
         .DATAIN(ram_data_in),
         .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
-        .CHIPSELECT(1'b1),
+        .CHIPSELECT(~ram_address[14]),
         .CLOCK(clk),
         .STANDBY(1'b0),
         .SLEEP(1'b0),
         .POWEROFF(1'b1),
-        .DATAOUT(ram_data_out),
+        .DATAOUT(ram_data_out[0]),
+    );
+
+    SB_SPRAM256KA ramfn_inst2(
+        .DATAIN(ram_data_in),
+        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
+        .MASKWREN(4'b1111),
+        .WREN(ram_wren),
+        .CHIPSELECT(ram_address[14]),
+        .CLOCK(clk),
+        .STANDBY(1'b0),
+        .SLEEP(1'b0),
+        .POWEROFF(1'b1),
+        .DATAOUT(ram_data_out[1]),
     );
 
     // Must be large enough to hold OUTPUT_COUNT
-    reg [(clogb2(OUTPUT_COUNT))-1:0] last_read;
+    //reg [(clogb2(OUTPUT_COUNT))-1:0] last_read;
+    reg [4:0] last_read;
 
     reg [2:0] last_state;
     reg [2:0] counter;
@@ -146,7 +161,9 @@ module sram_bus #(
                 counter <= counter + 1;
 
                 if(counter == 1) begin
-                    read_data <= ram_data_out;
+                    //read_data <= ram_data_out;
+                    read_data <= ram_data_out[ram_address[14]];
+
                     read_finished_strobes[last_read] <= 1;
                     state <= STATE_IDLE;
                 end

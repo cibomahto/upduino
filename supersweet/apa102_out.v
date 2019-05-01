@@ -5,9 +5,10 @@ module apa102_out #(
     input clk,
     input rst,
 
-    input [15:0] word_count,
-    input [15:0] start_address,
-    input [1:0] clock_divisor,
+    input [15:0] word_count,            // Number of words in a page
+    input [15:0] start_address,         // First address of first page to read from
+    input [1:0] clock_divisor,          // Clock divider bits
+    input [7:0] page_count,             // Number of POV pages
 
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read

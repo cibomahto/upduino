@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#HOST=10.0.0.68
-HOST=$1
+HOST=10.0.0.82
+#HOST=$1
 FILENAME=supersweet.bin
 REMOTE_FILENAME=fpga.bin
 

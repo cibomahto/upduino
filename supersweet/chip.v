@@ -37,7 +37,7 @@ module chip (
 
     localparam ADDRESS_BUS_WIDTH = 16;
     localparam DATA_BUS_WIDTH = 16;
-    localparam OUTPUT_COUNT = 10;
+    localparam OUTPUT_COUNT = 3;
 
     // Output counts, in words
     reg [(ADDRESS_BUS_WIDTH-1):0] output_word_counts [(OUTPUT_COUNT-1):0];
@@ -55,9 +55,9 @@ module chip (
         $readmemh("output_clock_divisors.list", output_clock_divisors);
     end
 
-    reg [7:0] output_pov_pages [(OUTPUT_COUNT-1):0];
+    reg [7:0] output_page_counts [(OUTPUT_COUNT-1):0];
     initial begin
-        $readmemh("output_pov_pages.list", output_pov_pages);
+        $readmemh("output_page_counts.list", output_page_counts);
     end
 
     // Reset signals for the outputs
@@ -85,25 +85,38 @@ module chip (
     wire [(ADDRESS_BUS_WIDTH-1):0] spi_word_address;
     wire spi_write_strobe;
 
+    wire [11:0] reg_base;
+    wire [3:0] reg_offset;
+    assign reg_base = spi_word_address[15:4];
+    assign reg_offset = spi_word_address[3:0];
+
+    reg [1:0] debug;
+
     // Map the configuration registers into memory
     always @(posedge clk) begin
+        debug <= 0;
+/*
         if(spi_write_strobe) begin
-            if(spi_word_address[15:4] == 12'h800) begin
-                output_word_counts[spi_word_address[3:0]] <= spi_data;
+            if(reg_base == 12'hFF0) begin
+                output_word_counts[reg_offset] <= spi_data;
+                debug <= 1;
             end
-            else if(spi_word_address[15:4] == 12'h801) begin
-                output_start_addresses[spi_word_address[3:0]] <= spi_data;
+            else if(reg_base == 12'hFF1) begin
+                output_start_addresses[reg_offset] <= spi_data;
+                debug <= 2;
             end
-            else if(spi_word_address[15:4] == 12'h802) begin
-                output_resets[spi_word_address[3:0]] <= spi_data[0];
+            else if(reg_base == 12'hFF2) begin
+                output_resets[reg_offset] <= spi_data[0];
+                debug <= 3;
             end
-            else if(spi_word_address[15:4] == 12'h803) begin
-                output_clock_divisors[spi_word_address[3:0]] <= spi_data[1:0];
+            else if(reg_base == 12'hFF3) begin
+                output_clock_divisors[reg_offset] <= spi_data[1:0];
             end
-            else if(spi_word_address[15:4] == 12'h804) begin
-                output_pov_pages[spi_word_address[3:0]] <= spi_data[7:0];
+            else if(reg_base == 12'hFF4) begin
+                output_page_counts[reg_offset] <= spi_data[7:0];
             end
         end
+*/
     end
 
 
@@ -146,6 +159,7 @@ module chip (
                 .word_count(output_word_counts[i]),
                 .start_address(output_start_addresses[i]),
                 .clock_divisor(output_clock_divisors[i]),
+                .page_count(output_page_counts[i]),
        
                 .read_address(read_addresses[i]),
                 .read_request(read_requests[i]),
@@ -179,13 +193,13 @@ module chip (
         .read_address_0(read_addresses[0]),
         .read_address_1(read_addresses[1]),
         .read_address_2(read_addresses[2]),
-        .read_address_3(read_addresses[3]),
-        .read_address_4(read_addresses[4]),
-        .read_address_5(read_addresses[5]),
-        .read_address_6(read_addresses[6]),
-        .read_address_7(read_addresses[7]),
-        .read_address_8(read_addresses[8]),
-        .read_address_9(read_addresses[9]),
+//        .read_address_3(read_addresses[3]),
+//        .read_address_4(read_addresses[4]),
+//        .read_address_5(read_addresses[5]),
+//        .read_address_6(read_addresses[6]),
+//        .read_address_7(read_addresses[7]),
+//        .read_address_8(read_addresses[8]),
+//        .read_address_9(read_addresses[9]),
 
         .state(state),
     );
@@ -197,7 +211,7 @@ module chip (
 //    assign DATA_5 = data_outputs[4];
     assign DATA_6 = data_outputs[2];
 //    assign DATA_7 = data_outputs[6];
-    assign DATA_8 = data_outputs[3];
+//    assign DATA_8 = data_outputs[0];            // Fourth output mirrors the first
 //    assign DATA_9 = data_outputs[8];
 //    assign DATA_10 = data_outputs[9];
 
@@ -208,9 +222,13 @@ module chip (
 //    assign CLOCK_5 = clock_outputs[4];
     assign CLOCK_6 = clock_outputs[2];
 //    assign CLOCK_7 = clock_outputs[6];
-    assign CLOCK_8 = clock_outputs[3];
+//    assign CLOCK_8 = clock_outputs[0];
 //    assign CLOCK_9 = clock_outputs[8];
 //    assign CLOCK_10 = clock_outputs[9];
+
+    assign DATA_8 = debug[1];
+    assign CLOCK_8 = debug[0];
+
 
     assign DATA_1 = 0;
     assign DATA_3 = 0;
