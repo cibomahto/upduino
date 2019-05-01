@@ -24,9 +24,9 @@ set_io CLOCK_9      46
 set_io DATA_10      21
 set_io CLOCK_10     20
 
-set_io RGB0         39
-set_io RGB1         40
-set_io RGB2         41
+set_io LED1         41
+set_io LED2         40
+set_io LED3         39
 
 set_io DMX_IN       19
 set_io DMX_OUT      18
