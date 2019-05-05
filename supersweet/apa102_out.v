@@ -22,6 +22,7 @@ module apa102_out #(
     reg [3:0] state;
     reg [10:0] counter;
 
+    reg [7:0] pages_remaining;          // Counter of how many pages are left to send
     reg [15:0] words_remaining;         // Counter of how many words are left to send
     reg [3:0] val_index;                // Counter from 0..15
 

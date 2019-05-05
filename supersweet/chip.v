@@ -95,7 +95,6 @@ module chip (
     // Map the configuration registers into memory
     always @(posedge clk) begin
         debug <= 0;
-/*
         if(spi_write_strobe) begin
             if(reg_base == 12'hFF0) begin
                 output_word_counts[reg_offset] <= spi_data;
@@ -116,7 +115,6 @@ module chip (
                 output_page_counts[reg_offset] <= spi_data[7:0];
             end
         end
-*/
     end
 
 
