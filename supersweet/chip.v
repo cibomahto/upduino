@@ -63,7 +63,8 @@ module chip (
     // Reset signals for the outputs
     reg [(OUTPUT_COUNT-1):0] output_resets;
     initial begin
-        output_resets <= 10'b0000000000;
+        //output_resets <= 10'b0000000000;
+        output_resets <= 10'b1111111111;
     end
 
     wire clk;

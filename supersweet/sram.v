@@ -33,9 +33,8 @@ module sram_bus #(
     reg [(ADDRESS_BUS_WIDTH-1):0] ram_address;
     reg [(DATA_BUS_WIDTH-1):0] ram_data_in;
     //wire [(DATA_BUS_WIDTH-1):0] ram_data_out;
-    wire [(DATA_BUS_WIDTH-1):0] ram_data_out [1:0];
+    wire [(DATA_BUS_WIDTH-1):0] ram_data_out [3:0];
     reg ram_wren;
-    reg ram_chipselect;
 
     wire [(ADDRESS_BUS_WIDTH-1):0] read_addresses [(OUTPUT_COUNT-1):0];
     assign read_addresses[0] = read_address_0;
@@ -49,12 +48,21 @@ module sram_bus #(
 //    assign read_addresses[8] = read_address_8;
 //    assign read_addresses[9] = read_address_9;
 
-    SB_SPRAM256KA ramfn_inst1(
+    wire ram_cs = ram_address[15:14];
+    wire ram_addr_low = ram_address[13:0];
+
+    wire cs_0 = (ram_cs == 2'b00);
+    wire cs_1 = (ram_cs == 2'b01);
+    wire cs_2 = (ram_cs == 2'b10);
+    wire cs_3 = (ram_cs == 2'b11);
+
+
+    SB_SPRAM256KA ramfn_inst0(
         .DATAIN(ram_data_in),
         .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
-        .CHIPSELECT(~ram_address[14]),
+        .CHIPSELECT(cs_0),
         .CLOCK(clk),
         .STANDBY(1'b0),
         .SLEEP(1'b0),
@@ -62,17 +70,43 @@ module sram_bus #(
         .DATAOUT(ram_data_out[0]),
     );
 
-    SB_SPRAM256KA ramfn_inst2(
+    SB_SPRAM256KA ramfn_inst1(
         .DATAIN(ram_data_in),
         .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
-        .CHIPSELECT(ram_address[14]),
+        .CHIPSELECT(cs_1),
         .CLOCK(clk),
         .STANDBY(1'b0),
         .SLEEP(1'b0),
         .POWEROFF(1'b1),
         .DATAOUT(ram_data_out[1]),
+    );
+
+    SB_SPRAM256KA ramfn_inst2(
+        .DATAIN(ram_data_in),
+        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
+        .MASKWREN(4'b1111),
+        .WREN(ram_wren),
+        .CHIPSELECT(cs_2),
+        .CLOCK(clk),
+        .STANDBY(1'b0),
+        .SLEEP(1'b0),
+        .POWEROFF(1'b1),
+        .DATAOUT(ram_data_out[2]),
+    );
+
+    SB_SPRAM256KA ramfn_inst3(
+        .DATAIN(ram_data_in),
+        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
+        .MASKWREN(4'b1111),
+        .WREN(ram_wren),
+        .CHIPSELECT(cs_3),
+        .CLOCK(clk),
+        .STANDBY(1'b0),
+        .SLEEP(1'b0),
+        .POWEROFF(1'b1),
+        .DATAOUT(ram_data_out[3]),
     );
 
     // Must be large enough to hold OUTPUT_COUNT
@@ -109,18 +143,17 @@ module sram_bus #(
             ram_data_in <= 0;
 
             ram_wren <= 0;
-            ram_chipselect <= 0;
         end
         else begin
             ram_wren <= 0;
+            counter <= 0;
 
             write_finished_strobe <= 0;
             read_finished_strobes <= 0;
 
             last_state <= state;
 
-            // Note that we are using 1 ram
-            if(write_strobe && (write_address[15:14] == 2'b0)) begin
+            if(write_strobe) begin
                 write_address_cache <= write_address;
                 write_data_cache <=write_data;
             end
@@ -128,11 +161,7 @@ module sram_bus #(
             case(state)
             STATE_IDLE:
             begin
-                counter <= 0;
 
-                // TODO: This will only catch a write strobe if we happen to be
-                // idle when it comes in. Move this to a FIFO, and poll the FIFO
-                // from here.
                 if(write_pending && (last_state != STATE_WRITE)) begin
                     ram_address <= write_address_cache;
                     ram_data_in <= write_data_cache;
@@ -152,17 +181,20 @@ module sram_bus #(
             end
             STATE_WRITE:
             begin
-                ram_wren <= 1;
-                write_finished_strobe <= 1;
-                state <= STATE_IDLE;
+                counter <= counter + 1;
+
+                if(counter == 1) begin
+                    ram_wren <= 1;
+                    write_finished_strobe <= 1;
+                    state <= STATE_IDLE;
+                end
             end
             STATE_READ:
             begin
                 counter <= counter + 1;
 
                 if(counter == 1) begin
-                    //read_data <= ram_data_out;
-                    read_data <= ram_data_out[ram_address[14]];
+                    read_data <= ram_data_out[ram_cs];
 
                     read_finished_strobes[last_read] <= 1;
                     state <= STATE_IDLE;

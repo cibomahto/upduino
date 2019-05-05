@@ -21,6 +21,7 @@ module apa102_out #(
 
     reg [3:0] state;
     reg [10:0] counter;
+    reg [10:0] delay_counter;
 
     reg [7:0] pages_remaining;          // Counter of how many pages are left to send
     reg [15:0] words_remaining;         // Counter of how many words are left to send
@@ -68,6 +69,9 @@ module apa102_out #(
 
             data_out <= 0;
             clock_out <= 0;
+
+            pages_remaining <= page_count;
+            read_address <= start_address;
         end
         else begin
             data_out <= 0;
@@ -76,8 +80,11 @@ module apa102_out #(
             case(state)
             0:  // Wait for start
             begin
-                state <= state + 1;
+                pages_remaining <= page_count - 1;
+                read_address <= start_address;
+
                 counter <= 0;
+                state <= state + 1;
             end
             1:  // Start Frame (32 bits of 0)
             begin
@@ -88,7 +95,7 @@ module apa102_out #(
                 
                 if(counter == 0) begin
                     words_remaining <= word_count;
-                    read_address <= start_address;
+                    //read_address <= start_address;
 
                     // Make a bogus read to get the fifo started
                     read_fifo_toggle <= ~read_fifo_toggle;
@@ -168,19 +175,40 @@ module apa102_out #(
                 if(counter == (32*2 - 1)) begin
                     state <= state + 1;
                     counter <= 0;
+
+                    delay_counter <= 0;
                 end
             end
             5:  // Delay
             begin
+                /*
                 counter <= counter + 1;
 
-                if(counter == 1024) begin
-                    state <= 0;
-                    counter <= 0;
+                if(counter == 1) begin
+                    delay_counter <= delay_counter + 1;
+
+                    if(delay_counter == 1024) begin
+
+                        if(pages_remaining == 1) begin
+                            state <= 0;
+                            counter <= 0;
+                        end
+                        else begin
+                            pages_remaining <= pages_remaining - 1;
+*/
+                            state <= 1;
+                            counter <= 0;
+                            /*
+                        end
+                    end
                 end
+                */
             end
             default:
+            begin
                 state <= 0;
+                counter <= 0;
+            end
             endcase
         end
     end
