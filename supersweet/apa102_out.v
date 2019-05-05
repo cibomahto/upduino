@@ -181,7 +181,6 @@ module apa102_out #(
             end
             5:  // Delay
             begin
-                /*
                 counter <= counter + 1;
 
                 if(counter == 1) begin
@@ -195,14 +194,11 @@ module apa102_out #(
                         end
                         else begin
                             pages_remaining <= pages_remaining - 1;
-*/
                             state <= 1;
                             counter <= 0;
-                            /*
                         end
                     end
                 end
-                */
             end
             default:
             begin
