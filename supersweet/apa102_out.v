@@ -183,10 +183,10 @@ module apa102_out #(
             begin
                 counter <= counter + 1;
 
-                if(counter == 1) begin
-                    delay_counter <= delay_counter + 1;
+//                if(counter == 1) begin
+//                    delay_counter <= delay_counter + 1;
 
-                    if(delay_counter == 1024) begin
+//                    if(delay_counter == 1024) begin
 
                         if(pages_remaining == 1) begin
                             state <= 0;
@@ -197,8 +197,8 @@ module apa102_out #(
                             state <= 1;
                             counter <= 0;
                         end
-                    end
-                end
+//                    end
+//                end
             end
             default:
             begin
