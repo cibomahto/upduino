@@ -91,24 +91,24 @@ module chip (
     assign reg_base = spi_word_address[15:4];
     assign reg_offset = spi_word_address[3:0];
 
-    reg [1:0] debug;
-
     // Map the configuration registers into memory
     always @(posedge clk) begin
-        debug <= 0;
         if(spi_write_strobe) begin
             if(reg_base == 12'hFF0) begin
                 output_word_counts[reg_offset] <= spi_data;
-                debug <= 1;
             end
             else if(reg_base == 12'hFF1) begin
                 output_start_addresses[reg_offset] <= spi_data;
-                debug <= 2;
             end
+//            else if(reg_base == 12'hFF2) begin
+//                output_resets[reg_offset] <= spi_data[0];
+//            end
+
+            // One shared register for the output resets
             else if(reg_base == 12'hFF2) begin
-                output_resets[reg_offset] <= spi_data[0];
-                debug <= 3;
+                output_resets[(OUTPUT_COUNT-1):0] <= spi_data[(OUTPUT_COUNT-1):0];
             end
+
             else if(reg_base == 12'hFF3) begin
                 output_clock_divisors[reg_offset] <= spi_data[1:0];
             end
@@ -225,14 +225,12 @@ module chip (
 //    assign CLOCK_9 = clock_outputs[8];
 //    assign CLOCK_10 = clock_outputs[9];
 
-    assign DATA_8 = debug[1];
-    assign CLOCK_8 = debug[0];
-
 
     assign DATA_1 = 0;
     assign DATA_3 = 0;
     assign DATA_5 = 0;
     assign DATA_7 = 0;
+    assign DATA_8 = 0;
     assign DATA_9 = 0;
     assign DATA_10 = 0;
 
@@ -240,6 +238,7 @@ module chip (
     assign CLOCK_3 = 0;
     assign CLOCK_5 = 0;
     assign CLOCK_7 = 0;
+    assign CLOCK_8 = 0;
     assign CLOCK_9 = 0;
     assign CLOCK_10 = 0;
 
