@@ -30,7 +30,7 @@ module sram_bus #(
 );
     `include "functions.vh"
 
-    localparam SRAM_COUNT = 2;
+    localparam SRAM_COUNT = 4;
 
     reg [(ADDRESS_BUS_WIDTH-1):0] ram_address;
     reg [(DATA_BUS_WIDTH-1):0] ram_data_in;
@@ -50,22 +50,22 @@ module sram_bus #(
 //    assign read_addresses[8] = read_address_8;
 //    assign read_addresses[9] = read_address_9;
 
-//    wire ram_cs = ram_address[15:14];
-//    wire ram_addr_low = ram_address[13:0];
+    wire [1:0] ram_cs = ram_address[15:14];
+    wire [13:0] ram_addr_low = ram_address[13:0];
 
-//    wire cs_0 = (ram_cs == 2'b00);
-//    wire cs_1 = (ram_cs == 2'b01);
-//    wire cs_2 = (ram_cs == 2'b10);
-//    wire cs_3 = (ram_cs == 2'b11);
+    wire cs_0 = (ram_cs == 2'b00);
+    wire cs_1 = (ram_cs == 2'b01);
+    wire cs_2 = (ram_cs == 2'b10);
+    wire cs_3 = (ram_cs == 2'b11);
 
 
     SB_SPRAM256KA ramfn_inst0(
         .DATAIN(ram_data_in),
-        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
+        .ADDRESS(ram_addr_low),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
-        //.CHIPSELECT(cs_0),
-        .CHIPSELECT(~ram_address[14]),
+        .CHIPSELECT(cs_0),
+//        .CHIPSELECT(~ram_address[14]),
         .CLOCK(clk),
         .STANDBY(1'b0),
         .SLEEP(1'b0),
@@ -75,21 +75,21 @@ module sram_bus #(
 
     SB_SPRAM256KA ramfn_inst1(
         .DATAIN(ram_data_in),
-        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
+        .ADDRESS(ram_addr_low),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
-//        .CHIPSELECT(cs_1),
-        .CHIPSELECT(ram_address[14]),
+        .CHIPSELECT(cs_1),
+//        .CHIPSELECT(ram_address[14]),
         .CLOCK(clk),
         .STANDBY(1'b0),
         .SLEEP(1'b0),
         .POWEROFF(1'b1),
         .DATAOUT(ram_data_out[1]),
     );
-/*
+
     SB_SPRAM256KA ramfn_inst2(
         .DATAIN(ram_data_in),
-        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
+        .ADDRESS(ram_addr_low),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
         .CHIPSELECT(cs_2),
@@ -102,7 +102,7 @@ module sram_bus #(
 
     SB_SPRAM256KA ramfn_inst3(
         .DATAIN(ram_data_in),
-        .ADDRESS(ram_address[13:0]),    // The ram is 16384 words long, so it needs 14 bits.
+        .ADDRESS(ram_addr_low),    // The ram is 16384 words long, so it needs 14 bits.
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
         .CHIPSELECT(cs_3),
@@ -112,7 +112,7 @@ module sram_bus #(
         .POWEROFF(1'b1),
         .DATAOUT(ram_data_out[3]),
     );
-*/
+
     // Must be large enough to hold OUTPUT_COUNT
     //reg [(clogb2(OUTPUT_COUNT))-1:0] last_read;
     reg [4:0] last_read;
@@ -198,8 +198,8 @@ module sram_bus #(
                 counter <= counter + 1;
 
                 if(counter == 1) begin
-                    //read_data <= ram_data_out[ram_cs];
-                    read_data <= ram_data_out[ram_address[14]];
+                    read_data <= ram_data_out[ram_cs];
+                    //read_data <= ram_data_out[ram_address[14]];
 
                     read_finished_strobes[last_read] <= 1;
                     state <= STATE_IDLE;
