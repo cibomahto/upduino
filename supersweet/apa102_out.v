@@ -9,6 +9,7 @@ module apa102_out #(
     input [15:0] start_address,         // First address of first page to read from
     input [1:0] clock_divisor,          // Clock divider bits
     input [7:0] page_count,             // Number of POV pages
+    input pixel_scale,                  // 0: 1x scaling 1: 2x scaling
 
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read
@@ -27,6 +28,9 @@ module apa102_out #(
     reg [15:0] words_remaining;         // Counter of how many words are left to send
     reg [3:0] val_index;                // Counter from 0..15
 
+    // In scaling mode, each pixel is sent multiple times
+    reg scale_counter;                  // Current scale index
+    reg [5:0] scale_buffer;             // Register to store scaled channels
 
     reg read_fifo_toggle;
     wire read_fifo_strobe;
@@ -107,6 +111,7 @@ module apa102_out #(
 
                     words_remaining <= words_remaining - 1;
                     read_address <= read_address + 1;
+                    scale_counter <= 0;
                     val_index <= 0;
                 end
 
@@ -137,31 +142,51 @@ module apa102_out #(
             begin
                 counter <= counter + 1;
 
-                data_out <= val[15 - val_index];
+                if(scale_counter == 0) begin
+                    data_out <= val[15 - val_index];
+
+                    scale_buffer[counter[6:1]] <= val[15 - val_index];
+                end
+                else begin
+                    data_out <= 0;
+                //    data_out <= scale_buffer[counter[6:1]];
+                end
+
                 clock_out <= counter[0];
 
                 if(counter[0] == 1) begin
                     if(counter == (24*2-1)) begin
                         counter <= 0;
 
-                        if(words_remaining == 0)
-                            state <= state + 1;
-                        else
+                        if(scale_counter == pixel_scale) begin
+                            scale_counter <= 0;
+
+                            if(words_remaining == 0)
+                                state <= state + 1;
+                            else
+                                state <= state - 1;
+                        end
+                        else begin
+                            scale_counter <= scale_counter + 1;
                             state <= state - 1;
+                        end
                     end
 
                     // TODO: Enforce somehow that we're outputting a multiple of 3 bytes
                     // Note that we transmit some junk on the last pixel if
                     // the words_remaining boundary isn't 24-bit aligned
-                    if((val_index == 15) && (words_remaining != 0)) begin
-                        read_fifo_toggle <= ~read_fifo_toggle;
+                    if (scale_counter == 0) begin
+                        if((val_index == 15)
+                            && (words_remaining != 0)) begin
+                            read_fifo_toggle <= ~read_fifo_toggle;
     
-                        words_remaining <= words_remaining - 1;
-                        read_address <= read_address + 1;
-                        val_index <= 0;
-                    end
-                    else begin
-                        val_index <= val_index + 1;
+                            words_remaining <= words_remaining - 1;
+                            read_address <= read_address + 1;
+                            val_index <= 0;
+                        end
+                        else begin
+                            val_index <= val_index + 1;
+                        end
                     end
                 end
             end

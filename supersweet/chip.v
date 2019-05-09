@@ -61,10 +61,15 @@ module chip (
     end
 
     // Reset signals for the outputs
-    reg [(OUTPUT_COUNT-1):0] output_resets;
+    reg [(OUTPUT_COUNT-1):0] output_enables;
     initial begin
-        //output_resets <= 10'b0000000000;
-        output_resets <= 10'b1111111111;
+        output_enables <= 10'b0000000000;
+    end
+
+    // Output scaling
+    reg [(OUTPUT_COUNT-1):0] output_pixel_scales;
+    initial begin
+        output_pixel_scales <= 10'b0000000000;
     end
 
     wire clk;
@@ -91,6 +96,29 @@ module chip (
     assign reg_base = spi_word_address[15:4];
     assign reg_offset = spi_word_address[3:0];
 
+
+    // Configuration register memory
+    // FF00: [15:0] Output 0 word count
+    // FF01: [15:0] Output 1 word count
+    // FF02: [15:0] Output 2 word count
+    // FF10: [15:0] Output 0 word start address
+    // FF11: [15:0] Output 1 word start address
+    // FF12: [15:0] Output 2 word start address
+    // FF20: Output resets:
+    //       [15-3] Don't care
+    //       [2] Output 2 enable
+    //       [1] Output 1 enable
+    //       [0] Output 0 enable
+    // FF30: [1:0] Output 0 clock divider
+    // FF31: [1:0] Output 1 clock divider
+    // FF32: [1:0] Output 2 clock divider
+    // FF40: [7:0] Output 0 page counts
+    // FF41: [7:0] Output 1 page counts
+    // FF42: [7:0] Output 2 page counts
+    // FF50: [0] Output 0 pixel scale (0: 1x scaling, 1: 2x scaling)
+    // FF51: [0] Output 1 pixel scale (0: 1x scaling, 1: 2x scaling)
+    // FF52: [0] Output 2 pixel scale (0: 1x scaling, 1: 2x scaling)
+
     // Map the configuration registers into memory
     always @(posedge clk) begin
         if(spi_write_strobe) begin
@@ -100,13 +128,8 @@ module chip (
             else if(reg_base == 12'hFF1) begin
                 output_start_addresses[reg_offset] <= spi_data;
             end
-//            else if(reg_base == 12'hFF2) begin
-//                output_resets[reg_offset] <= spi_data[0];
-//            end
-
-            // One shared register for the output resets
             else if(reg_base == 12'hFF2) begin
-                output_resets[(OUTPUT_COUNT-1):0] <= spi_data[(OUTPUT_COUNT-1):0];
+                output_enables[(OUTPUT_COUNT-1):0] <= ~spi_data[(OUTPUT_COUNT-1):0];
             end
 
             else if(reg_base == 12'hFF3) begin
@@ -114,6 +137,9 @@ module chip (
             end
             else if(reg_base == 12'hFF4) begin
                 output_page_counts[reg_offset] <= spi_data[7:0];
+            end
+            else if(reg_base == 12'hFF5) begin
+                output_pixel_scales[reg_offset] <= spi_data[0];
             end
         end
     end
@@ -153,12 +179,13 @@ module chip (
                 .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
             ) i_apa102_out (
                 .clk(clk),
-                .rst(output_resets[i]),
+                .rst(output_enables[i]),
 
                 .word_count(output_word_counts[i]),
                 .start_address(output_start_addresses[i]),
                 .clock_divisor(output_clock_divisors[i]),
                 .page_count(output_page_counts[i]),
+                .pixel_scale(output_pixel_scales[i]),
        
                 .read_address(read_addresses[i]),
                 .read_request(read_requests[i]),
