@@ -60,10 +60,14 @@ module chip (
         $readmemh("output_page_counts.list", output_page_counts);
     end
 
+    reg [(OUTPUT_COUNT-1):0] output_double_pixels;
+    initial begin
+        output_double_pixels <= 10'b0000000000;
+    end
+
     // Reset signals for the outputs
     reg [(OUTPUT_COUNT-1):0] output_resets;
     initial begin
-        //output_resets <= 10'b0000000000;
         output_resets <= 10'b1111111111;
     end
 
@@ -115,6 +119,9 @@ module chip (
             else if(reg_base == 12'hFF4) begin
                 output_page_counts[reg_offset] <= spi_data[7:0];
             end
+            else if(reg_base == 12'hFF5) begin
+                output_double_pixels[reg_offset] <= spi_data[0];
+            end
         end
     end
 
@@ -159,6 +166,7 @@ module chip (
                 .start_address(output_start_addresses[i]),
                 .clock_divisor(output_clock_divisors[i]),
                 .page_count(output_page_counts[i]),
+                .double_pixel(output_double_pixels[i]),
        
                 .read_address(read_addresses[i]),
                 .read_request(read_requests[i]),

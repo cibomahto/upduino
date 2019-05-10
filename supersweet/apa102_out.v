@@ -9,6 +9,7 @@ module apa102_out #(
     input [15:0] start_address,         // First address of first page to read from
     input [1:0] clock_divisor,          // Clock divider bits
     input [7:0] page_count,             // Number of POV pages
+    input double_pixel,                 // If true, send every pixel value twice
 
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read
@@ -27,6 +28,7 @@ module apa102_out #(
     reg [15:0] words_remaining;         // Counter of how many words are left to send
     reg [3:0] val_index;                // Counter from 0..15
 
+    reg [23:0] data_buffer;              // buffer for storing data that will be repeated
 
     reg read_fifo_toggle;
     wire read_fifo_strobe;
@@ -63,6 +65,15 @@ module apa102_out #(
         .clk_out(pixel_clock),
     );
 
+    localparam STATE_WAIT_FOR_START = 0;
+    localparam STATE_START_FRAME = 1;
+    localparam STATE_LED_HEADER = 2;
+    localparam STATE_LED_DATA = 3;
+    localparam STATE_REPEAT_HEADER = 4;
+    localparam STATE_REPEAT_DATA = 5;
+    localparam STATE_FRAME_END = 6;
+    localparam STATE_DELAY = 7;
+
     always @(negedge pixel_clock) begin
         if(rst) begin
             state <= 0;
@@ -78,15 +89,15 @@ module apa102_out #(
             clock_out <= 0;
 
             case(state)
-            0:  // Wait for start
+            STATE_WAIT_FOR_START:  // Wait for start
             begin
                 pages_remaining <= page_count - 1;
                 read_address <= start_address;
 
                 counter <= 0;
-                state <= state + 1;
+                state <= STATE_START_FRAME;
             end
-            1:  // Start Frame (32 bits of 0)
+            STATE_START_FRAME:  // Start Frame (32 bits of 0)
             begin
                 counter <= counter +1;
 
@@ -111,11 +122,11 @@ module apa102_out #(
                 end
 
                 if(counter == (32*2-1)) begin
-                    state <= state + 1;
+                    state <= STATE_LED_HEADER;
                     counter <= 0;
                 end
             end
-            2:    // LED frame configuration (8 bits)
+            STATE_LED_HEADER:    // LED frame configuration (8 bits)
             begin
                 counter <= counter +1;
 
@@ -129,25 +140,29 @@ module apa102_out #(
                 endcase
 
                 if(counter == (8*2 - 1)) begin
-                    state <= state + 1;
+                    state <= STATE_LED_DATA;
                     counter <= 0;
                 end
             end
-            3:  // BGR data
+            STATE_LED_DATA:  // BGR data
             begin
                 counter <= counter + 1;
 
                 data_out <= val[15 - val_index];
                 clock_out <= counter[0];
 
+                data_buffer[counter[6:1]] <= val[15 - val_index];
+
                 if(counter[0] == 1) begin
                     if(counter == (24*2-1)) begin
                         counter <= 0;
 
-                        if(words_remaining == 0)
-                            state <= state + 1;
+                        if(double_pixel == 1)
+                            state <= STATE_REPEAT_HEADER;
+                        else if(words_remaining == 0)
+                            state <= STATE_FRAME_END;
                         else
-                            state <= state - 1;
+                            state <= STATE_LED_HEADER;
                     end
 
                     // TODO: Enforce somehow that we're outputting a multiple of 3 bytes
@@ -165,7 +180,43 @@ module apa102_out #(
                     end
                 end
             end
-            4:  // Frame end (32 bits of 1)
+            STATE_REPEAT_HEADER:    // LED frame configuration (8 bits)
+            begin
+                counter <= counter +1;
+
+                clock_out <= counter[0];
+                
+                case(counter[3:1])
+                    0,1,2:
+                        data_out <= 1;
+                    default:
+                        data_out <= 1;      // TODO: Global brightness adjustment
+                endcase
+
+                if(counter == (8*2 - 1)) begin
+                    state <= STATE_REPEAT_DATA;
+                    counter <= 0;
+                end
+            end
+            STATE_REPEAT_DATA:  // BGR data
+            begin
+                counter <= counter + 1;
+
+                data_out <= data_buffer[counter[6:1]];
+                clock_out <= counter[0];
+
+                if(counter[0] == 1) begin
+                    if(counter == (24*2-1)) begin
+                        counter <= 0;
+
+                        if(words_remaining == 0)
+                            state <= STATE_FRAME_END;
+                        else
+                            state <= STATE_LED_HEADER;
+                    end
+                end
+            end
+            STATE_FRAME_END:  // Frame end (32 bits of 1)
             begin
                 counter <= counter +1;
 
@@ -173,13 +224,13 @@ module apa102_out #(
                 clock_out <= counter[0];
                 
                 if(counter == (32*2 - 1)) begin
-                    state <= state + 1;
+                    state <= STATE_DELAY;
                     counter <= 0;
 
                     delay_counter <= 0;
                 end
             end
-            5:  // Delay
+            STATE_DELAY:  // Delay
             begin
                 counter <= counter + 1;
 
@@ -189,12 +240,12 @@ module apa102_out #(
 //                    if(delay_counter == 1024) begin
 
                         if(pages_remaining == 1) begin
-                            state <= 0;
+                            state <= STATE_WAIT_FOR_START;
                             counter <= 0;
                         end
                         else begin
                             pages_remaining <= pages_remaining - 1;
-                            state <= 1;
+                            state <= STATE_START_FRAME;
                             counter <= 0;
                         end
 //                    end
@@ -202,7 +253,7 @@ module apa102_out #(
             end
             default:
             begin
-                state <= 0;
+                state <= STATE_WAIT_FOR_START;
                 counter <= 0;
             end
             endcase
