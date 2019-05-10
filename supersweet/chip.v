@@ -86,6 +86,36 @@ module chip (
     );
 
 
+    reg pov_prescale_counter;
+    reg [16:0] pov_counter;
+    reg [15:0] pov_preset;
+    initial begin
+        pov_preset = 16'h0000;
+    end
+
+    reg pov_start_toggle;           // Start toggle signal
+
+    always @(posedge clk) begin
+        if(rst) begin
+            pov_prescale_counter <= 0;
+            pov_counter <= pov_preset;
+        end
+        else begin
+            pov_prescale_counter <= pov_prescale_counter + 1;
+
+           if(pov_prescale_counter == 0) begin
+                pov_counter <= pov_counter - 1;
+
+                if(pov_counter == 0) begin
+                    pov_counter <= pov_preset;
+                    pov_start_toggle <= ~pov_start_toggle;
+                end
+            end
+        end
+    end
+
+    assign DATA_1 = pov_start_toggle;
+
     wire [(DATA_BUS_WIDTH-1):0] spi_data;
     wire [(ADDRESS_BUS_WIDTH-1):0] spi_word_address;
     wire spi_write_strobe;
@@ -121,6 +151,9 @@ module chip (
             end
             else if(reg_base == 12'hFF5) begin
                 output_double_pixels[reg_offset] <= spi_data[0];
+            end
+            else if(reg_base == 12'hFF6) begin
+                pov_preset[15:0] <= spi_data[15:0];
             end
         end
     end
@@ -167,6 +200,7 @@ module chip (
                 .clock_divisor(output_clock_divisors[i]),
                 .page_count(output_page_counts[i]),
                 .double_pixel(output_double_pixels[i]),
+                .start_toggle(pov_start_toggle),
        
                 .read_address(read_addresses[i]),
                 .read_request(read_requests[i]),
@@ -234,7 +268,7 @@ module chip (
 //    assign CLOCK_10 = clock_outputs[9];
 
 
-    assign DATA_1 = 0;
+//    assign DATA_1 = 0;
     assign DATA_3 = 0;
     assign DATA_5 = 0;
     assign DATA_7 = 0;

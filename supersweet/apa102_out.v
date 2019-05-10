@@ -11,6 +11,8 @@ module apa102_out #(
     input [7:0] page_count,             // Number of POV pages
     input double_pixel,                 // If true, send every pixel value twice
 
+    input start_toggle,                 // Start whenever this input toggles
+
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read
     input [15:0] read_data,                             // Incoming data
@@ -20,7 +22,8 @@ module apa102_out #(
     output reg clock_out,
 );
 
-    reg [3:0] state;
+    reg start_toggle_prev;
+    reg [4:0] state;
     reg [10:0] counter;
     reg [10:0] delay_counter;
 
@@ -65,14 +68,15 @@ module apa102_out #(
         .clk_out(pixel_clock),
     );
 
-    localparam STATE_WAIT_FOR_START = 0;
-    localparam STATE_START_FRAME = 1;
-    localparam STATE_LED_HEADER = 2;
-    localparam STATE_LED_DATA = 3;
-    localparam STATE_REPEAT_HEADER = 4;
-    localparam STATE_REPEAT_DATA = 5;
-    localparam STATE_FRAME_END = 6;
-    localparam STATE_DELAY = 7;
+    localparam STATE_START = 0;
+    localparam STATE_WAIT_FOR_SYNC = 1;
+    localparam STATE_START_FRAME = 2;
+    localparam STATE_LED_HEADER = 3;
+    localparam STATE_LED_DATA = 4;
+    localparam STATE_REPEAT_HEADER = 5;
+    localparam STATE_REPEAT_DATA = 6;
+    localparam STATE_FRAME_END = 7;
+    localparam STATE_DELAY = 8;
 
     always @(negedge pixel_clock) begin
         if(rst) begin
@@ -81,21 +85,31 @@ module apa102_out #(
             data_out <= 0;
             clock_out <= 0;
 
+            start_toggle_prev <= start_toggle;
             pages_remaining <= page_count;
             read_address <= start_address;
         end
         else begin
             data_out <= 0;
             clock_out <= 0;
+            start_toggle_prev <= start_toggle;
 
             case(state)
-            STATE_WAIT_FOR_START:  // Wait for start
+            STATE_START:  // Wait for start
             begin
+                counter <= 0;
+
                 pages_remaining <= page_count - 1;
                 read_address <= start_address;
 
-                counter <= 0;
-                state <= STATE_START_FRAME;
+                state <= STATE_WAIT_FOR_SYNC;
+            end
+            STATE_WAIT_FOR_SYNC:
+            begin
+                if(start_toggle != start_toggle_prev) begin
+                    counter <= 0;
+                    state <= STATE_START_FRAME;
+                end
             end
             STATE_START_FRAME:  // Start Frame (32 bits of 0)
             begin
@@ -232,28 +246,19 @@ module apa102_out #(
             end
             STATE_DELAY:  // Delay
             begin
-                counter <= counter + 1;
-
-//                if(counter == 1) begin
-//                    delay_counter <= delay_counter + 1;
-
-//                    if(delay_counter == 1024) begin
-
-                        if(pages_remaining == 1) begin
-                            state <= STATE_WAIT_FOR_START;
-                            counter <= 0;
-                        end
-                        else begin
-                            pages_remaining <= pages_remaining - 1;
-                            state <= STATE_START_FRAME;
-                            counter <= 0;
-                        end
-//                    end
-//                end
+                if(pages_remaining == 1) begin
+                    state <= STATE_START;
+                    counter <= 0;
+                end
+                else begin
+                    pages_remaining <= pages_remaining - 1;
+                    state <= STATE_WAIT_FOR_SYNC;
+                    counter <= 0;
+                end
             end
             default:
             begin
-                state <= STATE_WAIT_FOR_START;
+                state <= STATE_START;
                 counter <= 0;
             end
             endcase
