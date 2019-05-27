@@ -35,46 +35,37 @@ module chip (
 
     `include "functions.vh"
 
+    localparam COMMAND_WIDTH = 8;
     localparam ADDRESS_BUS_WIDTH = 16;
     localparam DATA_BUS_WIDTH = 16;
     localparam OUTPUT_COUNT = 3;
 
-    // Output counts, in words
-    reg [(ADDRESS_BUS_WIDTH-1):0] output_word_counts [(OUTPUT_COUNT-1):0];
-    initial begin
-        $readmemh("output_word_counts.list", output_word_counts);
-    end
-
-    reg [(ADDRESS_BUS_WIDTH-1):0] output_start_addresses [(OUTPUT_COUNT-1):0];
-    initial begin
-        $readmemh("output_start_addresses.list", output_start_addresses);
-    end
-
-    reg [1:0] output_clock_divisors [(OUTPUT_COUNT-1):0];
-    initial begin
-        $readmemh("output_clock_divisors.list", output_clock_divisors);
-    end
-
-    reg [7:0] output_page_counts [(OUTPUT_COUNT-1):0];
-    initial begin
-        $readmemh("output_page_counts.list", output_page_counts);
-    end
-
-    reg [(OUTPUT_COUNT-1):0] output_double_pixels;
-    initial begin
-        output_double_pixels <= 10'b0000000000;
-    end
-
-    // Reset signals for the outputs
-    reg [(OUTPUT_COUNT-1):0] output_resets;
-    initial begin
-        output_resets <= 10'b1111111111;
-    end
+    localparam POV_PRESCALER_BITS = 1;
+    localparam POV_COUNTER_BITS = 16;
 
     wire clk;
     wire rst;
 
-    assign rst = 0; // TODO: Hardware reset input
+    assign rst = 0; // TODO: Hardware reset input (?)
+
+    // Output counts, in words
+    reg [2:0] output_protocols [(OUTPUT_COUNT-1):0];
+    reg [(ADDRESS_BUS_WIDTH-1):0] output_word_counts [(OUTPUT_COUNT-1):0];
+    reg [(ADDRESS_BUS_WIDTH-1):0] output_start_addresses [(OUTPUT_COUNT-1):0];
+    reg [1:0] output_clock_divisors [(OUTPUT_COUNT-1):0];
+    reg [7:0] output_page_counts [(OUTPUT_COUNT-1):0];
+    reg [(OUTPUT_COUNT-1):0] output_double_pixels;
+    reg [(OUTPUT_COUNT-1):0] output_enables;
+
+    initial begin
+        $readmemh("output_word_counts.list", output_word_counts);
+        $readmemh("output_start_addresses.list", output_start_addresses);
+        $readmemh("output_clock_divisors.list", output_clock_divisors);
+        $readmemh("output_page_counts.list", output_page_counts);
+        output_double_pixels <= 10'b0000000000;
+        output_enables <= 10'b0000000000;
+    end
+
 
     // Configure the HFOSC
 	SB_HFOSC #(
@@ -85,9 +76,9 @@ module chip (
         .CLKHF(clk)
     );
 
-
+    /*
     reg pov_prescale_counter;
-    reg [16:0] pov_counter;
+    reg [15:0] pov_counter;
     reg [15:0] pov_preset;
     initial begin
         pov_preset = 16'h0000;
@@ -113,6 +104,30 @@ module chip (
             end
         end
     end
+    */
+
+
+    reg [(POV_PRESCALER_BITS-1):0] pov_speed_prescaler;
+    reg [(POV_COUNTER_BITS-1):0] pov_speed_counter;
+    initial begin
+        pov_speed_prescaler = 1;
+        pov_speed_counter = 16'h0000;
+    end
+
+    wire pov_start_toggle;
+
+    prescale_counter #(
+        .PRESCALER_BITS(POV_PRESCALER_BITS),
+        .COUNTER_BITS(POV_COUNTER_BITS),
+    ) prescale_counter_1 (
+        .clk(clk),
+        .rst(rst),
+
+        .prescaler_preset(pov_speed_prescaler),
+        .counter_preset(pov_speed_counter),
+
+        .counter_toggle(pov_start_toggle),
+    );
 
     assign DATA_1 = pov_start_toggle;
 
@@ -125,36 +140,40 @@ module chip (
     assign reg_base = spi_word_address[15:4];
     assign reg_offset = spi_word_address[3:0];
 
+    // Register Map
+    //
+    // The control registers are mapped into the device memory, starting at
+    // 0xFF00:
+    //
+    // 0xFF00: Output enables
+    // 0xFF01: POV speed count
+    // 0xFF1n: Output n config register
+    //         [15:12 reserved]
+    //         [13:11 output protocol]
+    //         [10:3 POV page count]
+    //         [2 double-pixel mode]
+    //         [1:0 clock divider]
+    // 0xFF2n: Output n word count
+    // 0xFF3n: Output n word start address
+
+
     // Map the configuration registers into memory
     always @(posedge clk) begin
         if(spi_write_strobe) begin
-            if(reg_base == 12'hFF0) begin
-                output_word_counts[reg_offset] <= spi_data;
-            end
+            if(spi_word_address == 16'hFF00)
+                output_enables[(OUTPUT_COUNT-1):0] <= spi_data[(OUTPUT_COUNT-1):0];
+            else if(spi_word_address == 16'hFF01)
+                pov_speed_counter[(POV_COUNTER_BITS-1):0] <= spi_data[(POV_COUNTER_BITS-1):0];
             else if(reg_base == 12'hFF1) begin
-                output_start_addresses[reg_offset] <= spi_data;
-            end
-//            else if(reg_base == 12'hFF2) begin
-//                output_resets[reg_offset] <= spi_data[0];
-//            end
-
-            // One shared register for the output resets
-            else if(reg_base == 12'hFF2) begin
-                output_resets[(OUTPUT_COUNT-1):0] <= spi_data[(OUTPUT_COUNT-1):0];
-            end
-
-            else if(reg_base == 12'hFF3) begin
+                output_protocols[reg_offset] <= spi_data[13:11];
+                output_page_counts[reg_offset] <= spi_data[10:3];
+                output_double_pixels[reg_offset] <= spi_data[2];
                 output_clock_divisors[reg_offset] <= spi_data[1:0];
             end
-            else if(reg_base == 12'hFF4) begin
-                output_page_counts[reg_offset] <= spi_data[7:0];
-            end
-            else if(reg_base == 12'hFF5) begin
-                output_double_pixels[reg_offset] <= spi_data[0];
-            end
-            else if(reg_base == 12'hFF6) begin
-                pov_preset[15:0] <= spi_data[15:0];
-            end
+            else if(reg_base == 12'hFF2)
+                output_word_counts[reg_offset] <= spi_data;
+            else if(reg_base == 12'hFF3)
+                output_start_addresses[reg_offset] <= spi_data;
         end
     end
 
@@ -162,6 +181,7 @@ module chip (
     spi_in #(
         .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
         .DATA_BUS_WIDTH(DATA_BUS_WIDTH),
+        .COMMAND_WIDTH(COMMAND_WIDTH),
     ) spi_in_1(
         .cs(LED_CS),
         .sck(LED_SCK),
@@ -179,7 +199,7 @@ module chip (
     wire [(OUTPUT_COUNT-1):0] read_requests;
     wire [(OUTPUT_COUNT-1):0] read_finished_strobes;
 
-    // The data output from the ram is shared
+    // The data output from the ram is a shared bus
     wire [15:0] read_data;
 
     // And wire arrays to map to the outputs
@@ -193,8 +213,9 @@ module chip (
                 .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
             ) i_apa102_out (
                 .clk(clk),
-                .rst(output_resets[i]),
+                .rst(~output_enables[i]),
 
+                //.protocol(output_protocols[i]),
                 .word_count(output_word_counts[i]),
                 .start_address(output_start_addresses[i]),
                 .clock_divisor(output_clock_divisors[i]),

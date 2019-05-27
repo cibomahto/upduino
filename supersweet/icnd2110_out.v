@@ -9,10 +9,10 @@ module icnd2110_out #(
     input [15:0] word_count,
     input [15:0] start_address,
 
-    output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
-    output wire read_request,                           // Flag to request a read
     input [15:0] read_data,                             // Incoming data
     input read_finished_strobe,                         // Strobe input to signal data ready
+    output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
+    output wire read_request,                           // Flag to request a read
 
     output reg data_out,
     output wire clock_out,
@@ -56,6 +56,12 @@ module icnd2110_out #(
     end
 
     assign clock_out = clockdiv[3];
+
+    localparam STATE_WAIT_FOR_START = 0;
+    localparam STATE_START_FRAME = 1;
+    localparam STATE_REG_HEADER = 3;
+    localparam STATE_FRAME_END = 9;
+    localparam STATE_DELAY = 10;
 
     always @(negedge clock_out) begin
         if(rst) begin

@@ -1,4 +1,5 @@
 module spi_in #(
+    parameter COMMAND_WIDTH = 8,
     parameter ADDRESS_BUS_WIDTH = 16,
     parameter DATA_BUS_WIDTH = 16,
 ) (

@@ -11,7 +11,9 @@ VERILOG_FILES = \
 	fifo.v \
 	toggle_to_strobe.v \
 	clock_divider.v \
-	pll.v
+	dmx_in.v \
+	pll.v \
+	prescale_counter.v
 
 PIN_CONFIG_FILE = supersweet_reva.pcf
 CLOCK_CONSTRAINTS_FILE = clocks.py
