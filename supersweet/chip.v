@@ -209,7 +209,8 @@ module chip (
     generate
         genvar i;
         for (i=0; i<(OUTPUT_COUNT); i=i+1) begin
-            apa102_out #(
+            //apa102_out #(
+            icnd2110_out #(
                 .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
             ) i_apa102_out (
                 .clk(clk),

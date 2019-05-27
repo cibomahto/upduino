@@ -1,12 +1,15 @@
+`include "functions.vh"
+
 module clock_divider #(
+    parameter DIVIDER_BITS = 4,
 ) (
     input clk,
     input rst,
 
-    input [1:0] divisor,
+    input [(clogb2(DIVIDER_BITS)-1):0] divisor,
     output reg clk_out,
 );
-    reg [3:0] clockdiv;
+    reg [(DIVIDER_BITS - 1):0] clockdiv;
 
     always @(posedge clk) begin
 //        if(rst) begin

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-HOST=10.0.0.53
-#HOST=$1
+# Set this in your environment to specify the device to upload to
+HOST=${SUPERSWEET_HOST}
 FILENAME=supersweet.bin
 REMOTE_FILENAME=fpga.bin
 

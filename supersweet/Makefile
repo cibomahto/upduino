@@ -6,6 +6,7 @@ VERILOG_FILES = \
 	sr_latch_gate.v \
 	spi_in.v \
 	apa102_out.v \
+	icnd2110_out.v \
 	sram.v \
 	srff.v \
 	fifo.v \

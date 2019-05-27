@@ -8,11 +8,17 @@ module icnd2110_out #(
 
     input [15:0] word_count,
     input [15:0] start_address,
+    input [1:0] clock_divisor,          // Clock divider bits  TODO
+    input [7:0] page_count,             // Number of POV pages  TODO
+    input double_pixel,                 // If true, send every pixel value twice TODO
 
-    input [15:0] read_data,                             // Incoming data
-    input read_finished_strobe,                         // Strobe input to signal data ready
+    input start_toggle,                 // Start whenever this input toggles    TODO
+
+
     output reg [(ADDRESS_BUS_WIDTH-1):0] read_address,  // Address of word to read
     output wire read_request,                           // Flag to request a read
+    input [15:0] read_data,                             // Incoming data
+    input read_finished_strobe,                         // Strobe input to signal data ready
 
     output reg data_out,
     output wire clock_out,
@@ -22,8 +28,6 @@ module icnd2110_out #(
 
     reg [15:0] words_remaining;         // Counter of how many words are left to send
     reg [2:0] subchip_byte;             // Counter from 0..5
-
-    reg [4:0] clockdiv;
 
     reg read_fifo_toggle;
     wire read_fifo_strobe;
@@ -51,11 +55,21 @@ module icnd2110_out #(
 
     assign read_request = ~fifo_1_full;
 
-    always @(posedge clk) begin
-        clockdiv <= clockdiv + 1;
-    end
+    wire [2:0] divider = clock_divisor[1:0] + 1;
 
-    assign clock_out = clockdiv[3];
+    wire pixel_clock;
+    clock_divider #(
+        .DIVIDER_BITS(5),
+    )
+        clock_divider_1(
+        .clk(clk),
+        .rst(rst),
+
+        .divisor(divider),
+        .clk_out(pixel_clock),
+    );
+
+    assign clock_out = pixel_clock;
 
     localparam STATE_WAIT_FOR_START = 0;
     localparam STATE_START_FRAME = 1;
@@ -63,7 +77,7 @@ module icnd2110_out #(
     localparam STATE_FRAME_END = 9;
     localparam STATE_DELAY = 10;
 
-    always @(negedge clock_out) begin
+    always @(negedge pixel_clock) begin
         if(rst) begin
             state <= 0;
             data_out <= 0;
