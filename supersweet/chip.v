@@ -210,11 +210,13 @@ module chip (
         genvar i;
         for (i=0; i<(OUTPUT_COUNT); i=i+1) begin
             //apa102_out #(
+            //ws2812_out #(
             icnd2110_out #(
                 .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
             ) i_apa102_out (
                 .clk(clk),
-                .rst(~output_enables[i]),
+                //.rst(~output_enables[i]),
+                .rst(0),
 
                 //.protocol(output_protocols[i]),
                 .word_count(output_word_counts[i]),

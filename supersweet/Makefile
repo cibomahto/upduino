@@ -7,6 +7,7 @@ VERILOG_FILES = \
 	spi_in.v \
 	apa102_out.v \
 	icnd2110_out.v \
+	ws2812_out.v \
 	sram.v \
 	srff.v \
 	fifo.v \

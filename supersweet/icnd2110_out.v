@@ -1,5 +1,5 @@
 module icnd2110_out #(
-    parameter ADDRESS_BUS_WIDTH = 16,       // Must be large enough to address WORD_COUNT
+    parameter ADDRESS_BUS_WIDTH = 16,
     parameter CFG_UP = 0,
     parameter CFG_PWM_WIDER = 1,
 ) (
@@ -8,7 +8,7 @@ module icnd2110_out #(
 
     input [15:0] word_count,
     input [15:0] start_address,
-    input [1:0] clock_divisor,          // Clock divider bits  TODO
+    input [1:0] clock_divisor,
     input [7:0] page_count,             // Number of POV pages  TODO
     input double_pixel,                 // If true, send every pixel value twice TODO
 
@@ -69,6 +69,7 @@ module icnd2110_out #(
         .clk_out(pixel_clock),
     );
 
+    //TODO: Disable pixel clock when in reset
     assign clock_out = pixel_clock;
 
     localparam STATE_WAIT_FOR_START = 0;
@@ -128,7 +129,7 @@ module icnd2110_out #(
 
                 // Request the first read early in case it gets queued
                 if(counter[3:0] == 0) begin
-                    words_remaining <= word_count;
+                    words_remaining <= 2688; //word_count;
                     read_address <= 5 + start_address;
 
                     // Make a bogus read to get the fifo started
