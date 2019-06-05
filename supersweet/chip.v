@@ -162,17 +162,21 @@ module chip (
         if(spi_write_strobe) begin
             if(spi_word_address == 16'hFF00)
                 output_enables[(OUTPUT_COUNT-1):0] <= spi_data[(OUTPUT_COUNT-1):0];
-            else if(spi_word_address == 16'hFF01)
+
+            if(spi_word_address == 16'hFF01)
                 pov_speed_counter[(POV_COUNTER_BITS-1):0] <= spi_data[(POV_COUNTER_BITS-1):0];
-            else if(reg_base == 12'hFF1) begin
+
+            if(reg_base == 12'hFF1) begin
                 output_protocols[reg_offset] <= spi_data[13:11];
                 output_page_counts[reg_offset] <= spi_data[10:3];
                 output_double_pixels[reg_offset] <= spi_data[2];
                 output_clock_divisors[reg_offset] <= spi_data[1:0];
             end
-            else if(reg_base == 12'hFF2)
+
+            if(reg_base == 12'hFF2)
                 output_word_counts[reg_offset] <= spi_data;
-            else if(reg_base == 12'hFF3)
+
+            if(reg_base == 12'hFF3)
                 output_start_addresses[reg_offset] <= spi_data;
         end
     end
@@ -312,8 +316,8 @@ module chip (
     assign DMX_OUT = DMX_IN;
 
     // LEDs do nothing
-    assign LED1 = ~0;
-    assign LED2 = ~1;
-    assign LED3 = ~0;
+    assign LED1 = ~output_enables[0];
+    assign LED2 = ~output_enables[1];
+    assign LED3 = ~output_enables[2];
 
 endmodule
