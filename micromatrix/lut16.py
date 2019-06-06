@@ -1,65 +1,27 @@
-'''
-module lut(count_out, angle); 
+import argparse
 
-input [2:0] count_out; 
-output [11:0] angle; 
-reg [11:0] angle; 
+parser = argparse.ArgumentParser(description='Create a lookup table from X bits to Y bits, using a power function')
+parser.add_argument('-i', dest='inputBits', type=int, default=8, help='Number of input bits')
+parser.add_argument('-o', dest='outputBits', type=int, default=16, help='Number of output bits')
+parser.add_argument('-e', dest='exponent', type=float, default=1.8, help='Lookup table exponent')
 
-always @(count_out) 
+args=parser.parse_args()
 
-case (count_out) 
+inputMax = pow(2,args.inputBits)-1
+outputMax = pow(2,args.outputBits)-1
 
-3'b000: angle=12'b001000000000; //0 45 45 
-3'b001: angle=12'b000100101110; //1 26.54 26.57 
-3'b010: angle=12'b000010100000; //2 14.06 14.036 
-3'b011: angle=12'b000001010001; //3 7.12 7.13 
-3'b100: angle=12'b000000101001; //4 3.604 3.576 
-3'b101: angle=12'b000000010100; //5 1.76 1.79 
-3'b110: angle=12'b000000001010; //6 0.88 0.9 
-3'b111: angle=12'b000000000101; //7 0.44 0.45 
-default: angle=12'b001000000000; //default 0 
+print(inputMax)
+print(outputMax)
 
-endcase 
+out = open('lut_%d_to_%d_pow_%0.2f.list'%(args.inputBits,args.outputBits,args.exponent),'w')
 
-endmodule
-'''
+formatNibbles = (args.outputBits+3)/4
+formatString = '%0'+'%dx '%(formatNibbles)
 
-header = '''
-module correction_lut_16(value, corrected); 
+for inputValue in range(0, (inputMax+1)):
+    outputValue = int(outputMax*pow(inputValue/float(inputMax),args.exponent))
 
-input [7:0] value; 
-output [15:0] corrected; 
-reg [15:0] corrected; 
+    out.write(formatString%(outputValue))
 
-always @(value) 
-
-case (value) 
-'''
-
-footer = '''
-
-endcase 
-
-endmodule
-
-'''
-
-
-out = open('correction_lut_16.v','w')
-out_ram = open('lut16.list', 'w')
-
-out.write(header)
-
-for val in range(0,256):
-    corrected = int(65535*pow(val/255.0,1.8))
-    out.write("%i: corrected=%i;\n" % (val,corrected))
-
-    out_ram.write("%04x" % corrected)
-
-    if(val%8 == 7):
-        out_ram.write("\n")
-    else:
-        out_ram.write(" ")
-
-
-out.write(footer)
+    if(inputValue % 16 == 15):
+        out.write('\n')

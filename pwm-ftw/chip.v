@@ -28,7 +28,7 @@ module chip (
     wire clk;
     wire rst;
 
-//    // PWM value memory
+    // PWM value memory
     reg [15:0] values [(PWM_CHANNELS-1):0];
     initial begin
         $readmemh("values.list", values);
