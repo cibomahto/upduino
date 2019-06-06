@@ -18,7 +18,8 @@ module matrix_out #(
     output wire c,
     output wire d,
 );
-    localparam COLUMNS = BOARDS * 16;
+    localparam COLUMNS_PER_BOARD = 16;
+    localparam COLUMNS = BOARDS * COLUMNS_PER_BOARD;
     localparam BYTES_TOTAL = COLUMNS*ROWS;
 
     // LED value memory
@@ -79,7 +80,7 @@ module matrix_out #(
         | ((1)<<6)                          // Optimized mode under low gray (recommend 1)
         | ((3)<<4);                         // Accelerate fix 8 rate, send 138 GCLKs each line: set to 0x3
 
-    localparam CONFIG_REG_1_LATCHES = 2+1*2;
+    localparam CONFIG_REG_1_LATCHES = (2 + 1*2);
 
     localparam CONFIG_REG_2_DATA =
         ((31)<<10)              // Pre-charge for ghosting reduction level (recommend R=31, G=28, B=23)
@@ -87,7 +88,7 @@ module matrix_out #(
         | ((8'hFF)<<1)          // Current gain adjust (IOUT=19*IGAIN/Rext*n, n set by REG2_I_DIV4N)
         | 32'h0001;
 
-    localparam CONFIG_REG_2_LATCHES = 2+2*2;
+    localparam CONFIG_REG_2_LATCHES = (2 + 2*2);
 
     always @(posedge clk) begin
 	    if(rst) begin
@@ -129,14 +130,14 @@ module matrix_out #(
                 // Send 1 pulse with latch low
                 dclk <= counter[0];
 
-                case(counter[4:1])
-                0, 15:
+                case(counter_bit)
+                0, (PREACTIVATE_CLOCKS+1):
                     le <= 0;
                 default:
                     le <= 1;
                 endcase
                 
-                if(counter == (2 + PREACTIVATE_CLOCKS*2 + 2) - 1) begin
+                if(counter == ((PREACTIVATE_CLOCKS + 2) << 1) - 1) begin
                     state <= state + 1;
                     counter <= 0;
                 end
@@ -145,12 +146,11 @@ module matrix_out #(
             1:
             begin
                 counter <= counter + 1;
-
                 dclk <= counter[0];
 
                 sdi <= CONFIG_REG_1_DATA[15-counter_bit];
 
-                if(counter > (16*BOARDS - CONFIG_REG_1_LATCHES)*2 - 1)
+                if(counter > ((16*BOARDS - CONFIG_REG_1_LATCHES) << 1) - 1)
                     le <= 1;
 
                 if(counter == (32*BOARDS - 1)) begin
@@ -164,19 +164,19 @@ module matrix_out #(
             3:
             begin
                 counter <= counter + 1;
-
                 dclk <= counter[0];
 
                 sdi <= CONFIG_REG_2_DATA[15-counter_bit];
 
-                if(counter > (16*BOARDS - CONFIG_REG_2_LATCHES)*2 - 1)
+                if(counter > ((COLUMNS - CONFIG_REG_2_LATCHES) << 1) - 1)
                     le <= 1;
 
-                if(counter == (32*BOARDS-1)) begin
+                if(counter == ((COLUMNS << 1) - 1)) begin
                     state <= state + 1;
                     counter <= 0;
                 end
             end
+
             // 4. Preactivate
             // 5. Send latches to enable all output channels
             5:
@@ -184,14 +184,15 @@ module matrix_out #(
                 counter <= counter + 1;
 
                 // Send 1 pulse with latch low
-                // Send 14 pulses with latch high
+                // Send 10 pulses with latch high
                 // Send 1 pulse with latch low
                 dclk <= counter[0];
+
 
                 if ((counter > 1) &&  (counter < (2 + ENABLE_OUTPUTS_CLOCKS*2)))
                     le <= 1;
                 
-                if(counter == (2 + ENABLE_OUTPUTS_CLOCKS*2 + 2) - 1) begin
+                if(counter == ((ENABLE_OUTPUTS_CLOCKS + 2) << 1) - 1) begin
                     state <= state + 1;
                     counter <= 0;
                 end
@@ -212,7 +213,7 @@ module matrix_out #(
                 if((counter_board == 15) && (counter_bit == 15))
                     le <= 1;
 
-                if(counter == (BOARDS*16*16*16*2 - 1)) begin
+                if(counter == ((BOARDS*16*16*16) << 1) - 1) begin
                     state <= state + 1;
                     counter <= 0;
                 end
@@ -242,10 +243,14 @@ module matrix_out #(
                 // Send 1 pulse with latch low
                 dclk <= counter[0];
 
-                if ((counter > 1) &&  (counter < (2 + VSYNC_CLOCKS*2)))
+                case(counter_bit)
+                0, (VSYNC_CLOCKS+1):
+                    le <= 0;
+                default:
                     le <= 1;
+                endcase
                 
-                if(counter == (2 + VSYNC_CLOCKS*2 + 2) - 1) begin
+                if(counter == ((VSYNC_CLOCKS + 2) << 1) - 1) begin
                     state <= state + 1;
                     counter <= 0;
                 end
