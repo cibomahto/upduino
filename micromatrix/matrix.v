@@ -18,12 +18,11 @@ module matrix_out #(
     output wire c,
     output wire d,
 );
-    localparam COLUMNS_PER_BOARD = 16;
-    localparam COLUMNS = BOARDS * COLUMNS_PER_BOARD;
-    localparam BYTES_TOTAL = COLUMNS*ROWS;
+    localparam OUTPUTS_PER_BOARD = 16;
+    localparam OUTPUTS_TOTAL = BOARDS*OUTPUTS_PER_BOARD*ROWS;
 
     // LED value memory
-    reg [15:0] values [(BYTES_TOTAL-1):0];
+    reg [15:0] values [(OUTPUTS_TOTAL-1):0];
     // TODO: Clear this to 0
 
     reg [15:0] lut_8_to_16 [255:0];
@@ -41,12 +40,13 @@ module matrix_out #(
     reg [4:0] state;            // State machine
     reg [20:0] counter;         // Counter for the state machine
 
+    reg [3:0] current_board;    // Current board being written to device
+    reg [3:0] current_output;      // Current column being written to device
+    reg [3:0] current_row;      // Current row being written to device
+    reg [15:0] current_address;
+
     reg [3:0] row_address;      // Current row address (0-ROWS)
     reg [7:0] gclock_counter;   // Counter to synchronize row address with gclock
-
-    reg [3:0] current_bit;      // Current bit plane being clocked out
-    reg [7:0] current_column;   // Current column being clocked out
-    reg [4:0] current_row;      // Current row being clocked out
 
     reg [15:0] value;                           // Output value
     wire [7:0] value_brightness = value[8:1];   // Current brightness
@@ -57,9 +57,6 @@ module matrix_out #(
     assign c = row_address[1];
     assign d = row_address[0];
 
-    wire [3:0] counter_row = counter[16:13];     // Current row
-    wire [3:0] counter_col = counter[12:9];      // Current column
-    wire [3:0] counter_board = counter[8:5];     // Current board
     wire [3:0] counter_bit = counter[4:1];       // Current bit of current LED
 
     wire [15:0] correction;
@@ -74,6 +71,7 @@ module matrix_out #(
     localparam PREACTIVATE_CLOCKS = 14;
     localparam ENABLE_OUTPUTS_CLOCKS = 12;
     localparam VSYNC_CLOCKS = 3;
+    localparam GCLK_COUNTS = 138;
 
     localparam CONFIG_REG_1_DATA =
         ((ROWS-1)<<8)                       // Number of scan lines (0=1, ..., 31=32)
@@ -99,8 +97,6 @@ module matrix_out #(
 
             gclock_counter <= 0;
             row_address <= 0;
-
-            value <= 0;
         end
         else begin
             gclk <= ~gclk;
@@ -111,17 +107,31 @@ module matrix_out #(
 
             if(gclk == 1) begin
                 gclock_counter <= gclock_counter + 1;
-            end
 
-            if(gclock_counter == 138) begin
-                row_address <= row_address + 1;
-                gclock_counter <= 0;
+                if(gclock_counter == (GCLK_COUNTS - 1 - 4)) begin
+                    row_address <= row_address + 1;
+             
+                    if(row_address == ROWS - 1)
+                        row_address <= 0;
+                end
+             
+                if(gclock_counter == (GCLK_COUNTS-1)) begin
+                    gclock_counter <= 0;
+                end
             end
-
 
             case(state)
-            // 0. Preactivate
-            0,2,4:
+            0:      // Setup
+            begin
+                state <= state + 1;
+                counter <= 0;
+
+                row_address <= 0;
+                gclock_counter <= 0;
+
+                //value <= value + 1;     // TODO: Delete me
+            end
+            1,3,5:  // Pre-activate
             begin
                 counter <= counter + 1;
 
@@ -142,8 +152,7 @@ module matrix_out #(
                     counter <= 0;
                 end
             end
-            // 1. Write config register 1 to set scan mode
-            1:
+            2:  // Write config register 1 to set scan mode
             begin
                 counter <= counter + 1;
                 dclk <= counter[0];
@@ -153,75 +162,104 @@ module matrix_out #(
                 if(counter > ((16*BOARDS - CONFIG_REG_1_LATCHES) << 1) - 1)
                     le <= 1;
 
-                if(counter == (32*BOARDS - 1)) begin
+                if(counter == (16*BOARDS << 1) - 1) begin
                     state <= state + 1;
                     counter <= 0;
                 end
             end
 
-            // 2. Preactivate
-            // 3. Write config register 2 to set brightness
-            3:
+            // 3. Preactivate
+            4:  // Write config register 2 to set brightness
             begin
                 counter <= counter + 1;
                 dclk <= counter[0];
 
                 sdi <= CONFIG_REG_2_DATA[15-counter_bit];
 
-                if(counter > ((COLUMNS - CONFIG_REG_2_LATCHES) << 1) - 1)
+                if(counter > ((16*BOARDS - CONFIG_REG_2_LATCHES) << 1) - 1)
                     le <= 1;
 
-                if(counter == ((COLUMNS << 1) - 1)) begin
+                if(counter == ((16*BOARDS << 1) - 1)) begin
                     state <= state + 1;
                     counter <= 0;
                 end
             end
 
-            // 4. Preactivate
-            // 5. Send latches to enable all output channels
-            5:
+            // 5. Preactivate
+            6:  // Send latches to enable all output channels
             begin
                 counter <= counter + 1;
 
-                // Send 1 pulse with latch low
-                // Send 10 pulses with latch high
-                // Send 1 pulse with latch low
                 dclk <= counter[0];
 
-
-                if ((counter > 1) &&  (counter < (2 + ENABLE_OUTPUTS_CLOCKS*2)))
+                case(counter_bit)
+                0, (ENABLE_OUTPUTS_CLOCKS + 1):
+                    le <= 0;
+                default:
                     le <= 1;
+                endcase
                 
                 if(counter == ((ENABLE_OUTPUTS_CLOCKS + 2) << 1) - 1) begin
                     state <= state + 1;
                     counter <= 0;
+
+                    current_board <= 0;
+                    current_output <= 0;
+                    current_row <= 0;
+                    current_address <= 0;
+
+                    value <= 16'h7FFF; // Setting this near the highest value causes bleeding
                 end
             end
 
-            // 6. Send data (1 chip * 16 rows * 16 cols * 16 bits per LED)
-            6:
+            7:  // Send data (1 chip * 16 rows * 16 cols * 16 bits per LED)
             begin
+                // Outer loop: rows
+                //   Middle loop: columns
+                //     Middler loop: boards
+                //       Inner loop: bits
+
                 counter <= counter + 1;
 
                 dclk <= counter[0];
 
                 // TODO: Send data from memory
-                if((value_step == counter_row)
-                    || (value_step == counter_col))
-                    sdi <= correction[15-counter_bit];
+                //if((value_step == current_row) || (value_step == current_output))
+                //    sdi <= correction[15-counter_bit];
 
-                if((counter_board == 15) && (counter_bit == 15))
+                if((current_row == 0) && (current_output == 4) && (current_board == 1))
+                    sdi <= value[15 - counter_bit];
+
+                //sdi <= values[current_address][current_bit];
+
+                if((current_board == (BOARDS - 1)) && (counter_bit == 15))
                     le <= 1;
 
-                if(counter == ((BOARDS*16*16*16) << 1) - 1) begin
-                    state <= state + 1;
+                if(counter[4:0] == 5'b11111) begin
                     counter <= 0;
+
+                    current_board <= current_board + 1;
+                    
+                    if(current_board == (BOARDS - 1)) begin
+                        current_board <= 0;
+
+                        current_output <= current_output + 1;
+                        
+                        if(current_output == (OUTPUTS_PER_BOARD - 1)) begin
+                            current_output <= 0;
+                     
+                            current_row <= current_row + 1;
+                     
+                            if(current_row == (ROWS - 1)) begin
+                                state <= state + 1;
+                                counter <= 0;
+                            end
+                        end
+                    end
                 end
-
+                
             end
-
-            // 7. Wait 50 GCLK (TODO: Needed?)
-            7:
+            8:  // Wait 50 GCLK (TODO: Needed?)
             begin
                 counter <= counter + 1;
 
@@ -230,9 +268,16 @@ module matrix_out #(
                     counter <= 0;
                 end
             end
-            // 8. Send vsync with glcock disabled
-            // (TODO: Sync to actual vsync event)
-            8:
+            9:  // Wait for end of frame, to start VSYNC
+            begin
+                if((gclock_counter == (GCLK_COUNTS-1)) && (row_address == 0) && (gclk == 1)) begin
+                    state <= state + 1;
+                    counter <= 0;
+                end
+            end
+
+            10:  // Send vsync with glcock disabled
+                // (TODO: Sync to actual vsync event)
             begin
                 counter <= counter + 1;
 
@@ -244,7 +289,7 @@ module matrix_out #(
                 dclk <= counter[0];
 
                 case(counter_bit)
-                0, (VSYNC_CLOCKS+1):
+                0, (VSYNC_CLOCKS + 1):
                     le <= 0;
                 default:
                     le <= 1;
@@ -255,24 +300,20 @@ module matrix_out #(
                     counter <= 0;
                 end
             end
-            // 9. Wait with GCLK disabled
-            9:
+
+            11: // Send 4 GCLKs
             begin
                 counter <= counter + 1;
 
-                gclk <= 0;
+                gclk <= counter[0];
 
-                if(counter == 50) begin
-                    state <= state + 1;
+                if(counter[2:1] == 2'b11) begin
+                    state <= 0;
                     counter <= 0;
 
-                    row_address <= 0;
                     gclock_counter <= 0;
-
-                    value <= value + 1;
                 end
-            end
-
+            end   
             default:
             begin
                 state <=0;
