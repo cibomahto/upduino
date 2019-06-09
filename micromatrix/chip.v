@@ -24,10 +24,10 @@ module chip (
     output DEBUG_7,
 );
 
-    localparam LED_COLS = 12;
+    localparam LED_BOARDS = 3;
+    localparam OUTPUTS_PER_BOARD = 16;
     localparam LED_ROWS = 4;
-    localparam CHANNELS_PER_LED = 4;
-    localparam LED_CHANNELS = (LED_COLS * LED_ROWS * CHANNELS_PER_LED);
+    localparam LED_CHANNELS = (LED_BOARDS * OUTPUTS_PER_BOARD * LED_ROWS);
 
 	wire clk;
     wire rst;

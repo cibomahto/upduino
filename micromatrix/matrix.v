@@ -40,10 +40,10 @@ module matrix_out #(
     reg [4:0] state;            // State machine
     reg [20:0] counter;         // Counter for the state machine
 
-    reg [3:0] current_board;    // Current board being written to device
-    reg [3:0] current_output;      // Current column being written to device
-    reg [3:0] current_row;      // Current row being written to device
-    reg [15:0] current_address;
+    reg [3:0] next_board;    // Current board being written to device
+    reg [4:0] next_output;      // Current column being written to device
+    reg [3:0] next_row;      // Current row being written to device
+    reg [15:0] next_address;
 
     reg [3:0] row_address;      // Current row address (0-ROWS)
     reg [7:0] gclock_counter;   // Counter to synchronize row address with gclock
@@ -198,20 +198,23 @@ module matrix_out #(
                 default:
                     le <= 1;
                 endcase
+
+                if(counter == ((ENABLE_OUTPUTS_CLOCKS + 2) << 1) - 2) begin
+                    next_board <= 0;
+                    next_output <= 0;
+                    next_row <= 0;
+                    next_address <= 0;
+                end
                 
                 if(counter == ((ENABLE_OUTPUTS_CLOCKS + 2) << 1) - 1) begin
                     state <= state + 1;
                     counter <= 0;
 
-                    current_board <= 0;
-                    current_output <= 0;
-                    current_row <= 0;
-                    current_address <= 0;
-
-                    value <= 16'h7FFF; // Setting this near the highest value causes bleeding
+                    value <= values[next_address];
+                    next_board <= next_board + 1;
+                    next_address <= next_address + OUTPUTS_PER_BOARD*ROWS;
                 end
             end
-
             7:  // Send data (1 chip * 16 rows * 16 cols * 16 bits per LED)
             begin
                 // Outer loop: rows
@@ -223,34 +226,30 @@ module matrix_out #(
 
                 dclk <= counter[0];
 
-                // TODO: Send data from memory
-                //if((value_step == current_row) || (value_step == current_output))
-                //    sdi <= correction[15-counter_bit];
+                sdi <= value[15 - counter_bit];
 
-                if((current_row == 0) && (current_output == 4) && (current_board == 1))
-                    sdi <= value[15 - counter_bit];
-
-                //sdi <= values[current_address][current_bit];
-
-                if((current_board == (BOARDS - 1)) && (counter_bit == 15))
+                if((next_board == (BOARDS)) && (counter_bit == 15))
                     le <= 1;
 
                 if(counter[4:0] == 5'b11111) begin
                     counter <= 0;
 
-                    current_board <= current_board + 1;
+                    value <= values[next_address];
+                    next_board <= next_board + 1;
+                    next_address <= next_address + OUTPUTS_PER_BOARD*ROWS;
                     
-                    if(current_board == (BOARDS - 1)) begin
-                        current_board <= 0;
+                    if(next_board == (BOARDS)) begin
+                        next_board <= 0;
 
-                        current_output <= current_output + 1;
+                        next_output <= next_output + 1;
+                        next_address <= next_address - ((BOARDS) * OUTPUTS_PER_BOARD*ROWS) + 1;
                         
-                        if(current_output == (OUTPUTS_PER_BOARD - 1)) begin
-                            current_output <= 0;
+                        if(next_output == (OUTPUTS_PER_BOARD - 1)) begin
+                            next_output <= 0;
                      
-                            current_row <= current_row + 1;
+                            next_row <= next_row + 1;
                      
-                            if(current_row == (ROWS - 1)) begin
+                            if(next_row == (ROWS-1)) begin
                                 state <= state + 1;
                                 counter <= 0;
                             end
