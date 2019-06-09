@@ -1,5 +1,5 @@
 module matrix_out #(
-    parameter BOARDS = 3,
+    parameter BOARDS = 2,
     parameter ROWS = 4,
 ) (
     input clk,
