@@ -47,15 +47,17 @@ module matrix_out #(
 
     reg [3:0] row_address;      // Current row address (0-ROWS)
     reg [7:0] gclock_counter;   // Counter to synchronize row address with gclock
+    reg gclk_bit;
+    reg addr_blank;
 
     reg [15:0] value;                           // Output value
     wire [7:0] value_brightness = value[8:1];   // Current brightness
     wire [3:0] value_step = value[12:9];         // Current row/col
 
-    assign a = row_address[3];
-    assign b = row_address[2];
-    assign c = row_address[1];
-    assign d = row_address[0];
+    assign a = row_address[3] | addr_blank;
+    assign b = row_address[2] | addr_blank;
+    assign c = row_address[1] | addr_blank;
+    assign d = row_address[0] | addr_blank;
 
     wire [3:0] counter_bit = counter[4:1];       // Current bit of current LED
 
@@ -99,23 +101,35 @@ module matrix_out #(
             row_address <= 0;
         end
         else begin
-            gclk <= ~gclk;
 
             le <= 0;
             sdi <= 0;
             dclk <= 0;
 
-            if(gclk == 1) begin
+//            gclk <= ~gclk;
+            gclk_bit <= gclk_bit + 1;
+            addr_blank <= 0;
+
+            if(gclock_counter > (GCLK_COUNTS - 1 - 4) || gclock_counter < 2)
+                addr_blank <= 1;
+
+            if(gclock_counter < (GCLK_COUNTS))
+                gclk <= gclk_bit;
+            else
+                gclk <= 0;
+
+            if(gclk_bit == 1) begin
                 gclock_counter <= gclock_counter + 1;
 
-                if(gclock_counter == (GCLK_COUNTS - 1 - 4)) begin
+                if(gclock_counter == (GCLK_COUNTS - 1)) begin
                     row_address <= row_address + 1;
              
                     if(row_address == ROWS - 1)
                         row_address <= 0;
                 end
-             
-                if(gclock_counter == (GCLK_COUNTS-1)) begin
+            
+                // Delay a little extra 
+                if(gclock_counter == (GCLK_COUNTS-1 + 4)) begin
                     gclock_counter <= 0;
                 end
             end

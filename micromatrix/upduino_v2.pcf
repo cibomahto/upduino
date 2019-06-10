@@ -11,13 +11,6 @@ set_io LE       3
 set_io DCLK     4
 set_io SDI      44
 
-set_io DMX_IN   23
-
-set_io DEBUG_0  28
-set_io DEBUG_1  38
-set_io DEBUG_2  42
-set_io DEBUG_3  36
-set_io DEBUG_4  43
-set_io DEBUG_5  34
-set_io DEBUG_6  37
-set_io DEBUG_7  31
+set_io DMX_IN   28
+set_io RS485_RE 38
+set_io RS485_DE 42

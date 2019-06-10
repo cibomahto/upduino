@@ -1,6 +1,9 @@
 module chip (
     input   DMX_IN,
 
+    output RS485_RE,
+    output RS485_DE,
+
     output  SDI,
     output  DCLK,
     output  LE,
@@ -13,15 +16,6 @@ module chip (
     output LED_R,
     output LED_G,
     output LED_B,
-
-    output DEBUG_0,
-    output DEBUG_1,
-    output DEBUG_2,
-    output DEBUG_3,
-    output DEBUG_4,
-    output DEBUG_5,
-    output DEBUG_6,
-    output DEBUG_7,
 );
 
     localparam LED_BOARDS = 3;
@@ -36,6 +30,9 @@ module chip (
     wire led_b;
 
     wire start_flag;
+
+    assign RS485_RE = 0;
+    assign RS485_DE = 0;
 
     assign rst = 0;
 
@@ -89,14 +86,4 @@ module chip (
     assign LED_R = 1;
     assign LED_B = 1;
     assign LED_G = 1;
-
-    assign DEBUG_0 = SDI;
-    assign DEBUG_1 = DCLK;
-    assign DEBUG_2 = LE;
-    assign DEBUG_3 = GCLK;
-    assign DEBUG_4 = A;
-    assign DEBUG_5 = B;
-    assign DEBUG_6 = C;
-    assign DEBUG_7 = D;
-
 endmodule
