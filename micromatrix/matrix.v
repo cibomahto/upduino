@@ -32,7 +32,7 @@ module matrix_out #(
 
     always @(posedge clk)
     begin
-        if(write_strobe_in) begin
+        if((write_strobe_in) && (address_in < OUTPUTS_TOTAL)) begin
             values[address_in] <= lut_8_to_16[data_in];
         end
     end

@@ -4,11 +4,12 @@ parser = argparse.ArgumentParser(description='Create a lookup table from X bits 
 parser.add_argument('-i', dest='inputBits', type=int, default=8, help='Number of input bits')
 parser.add_argument('-o', dest='outputBits', type=int, default=16, help='Number of output bits')
 parser.add_argument('-e', dest='exponent', type=float, default=1.8, help='Lookup table exponent')
+parser.add_argument('-b', dest='brightness', type=float, default=2.0, help='Maximum brightness (0.0-1.0)')
 
 args=parser.parse_args()
 
 inputMax = pow(2,args.inputBits)-1
-outputMax = pow(2,args.outputBits)-1
+outputMax = (pow(2,args.outputBits)-1)*args.brightness
 
 print(inputMax)
 print(outputMax)
