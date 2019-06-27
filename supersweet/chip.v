@@ -38,7 +38,7 @@ module chip (
     localparam COMMAND_WIDTH = 8;
     localparam ADDRESS_BUS_WIDTH = 16;
     localparam DATA_BUS_WIDTH = 16;
-    localparam OUTPUT_COUNT = 3;
+    localparam OUTPUT_COUNT = 4;
 
     localparam POV_PRESCALER_BITS = 1;
     localparam POV_COUNTER_BITS = 16;
@@ -76,37 +76,6 @@ module chip (
         .CLKHF(clk)
     );
 
-    /*
-    reg pov_prescale_counter;
-    reg [15:0] pov_counter;
-    reg [15:0] pov_preset;
-    initial begin
-        pov_preset = 16'h0000;
-    end
-
-    reg pov_start_toggle;           // Start toggle signal
-
-    always @(posedge clk) begin
-        if(rst) begin
-            pov_prescale_counter <= 0;
-            pov_counter <= pov_preset;
-        end
-        else begin
-            pov_prescale_counter <= pov_prescale_counter + 1;
-
-           if(pov_prescale_counter == 0) begin
-                pov_counter <= pov_counter - 1;
-
-                if(pov_counter == 0) begin
-                    pov_counter <= pov_preset;
-                    pov_start_toggle <= ~pov_start_toggle;
-                end
-            end
-        end
-    end
-    */
-
-
     reg [(POV_PRESCALER_BITS-1):0] pov_speed_prescaler;
     reg [(POV_COUNTER_BITS-1):0] pov_speed_counter;
     initial begin
@@ -129,8 +98,6 @@ module chip (
         .counter_toggle(pov_start_toggle),
     );
 
-    assign DATA_1 = pov_start_toggle;
-
     wire [(DATA_BUS_WIDTH-1):0] spi_data;
     wire [(ADDRESS_BUS_WIDTH-1):0] spi_word_address;
     wire spi_write_strobe;
@@ -147,6 +114,7 @@ module chip (
     //
     // 0xFF00: Output enables
     // 0xFF01: POV speed count
+    // 0xFF02: Output syncs (not implemented)
     // 0xFF1n: Output n config register
     //         [15:12 reserved]
     //         [13:11 output protocol]
@@ -215,12 +183,13 @@ module chip (
         for (i=0; i<(OUTPUT_COUNT); i=i+1) begin
             //apa102_out #(
             //ws2812_out #(
-            icnd2110_out #(
+            //icnd2110_out #(
+            mbi6120_out #(
                 .ADDRESS_BUS_WIDTH(ADDRESS_BUS_WIDTH),
-            ) i_apa102_out (
+            ) i_led_out (
                 .clk(clk),
-                //.rst(~output_enables[i]),
-                .rst(0),
+                .rst(~output_enables[i]),
+                //.rst(0),
 
                 //.protocol(output_protocols[i]),
                 .word_count(output_word_counts[i]),
@@ -262,7 +231,7 @@ module chip (
         .read_address_0(read_addresses[0]),
         .read_address_1(read_addresses[1]),
         .read_address_2(read_addresses[2]),
-//        .read_address_3(read_addresses[3]),
+        .read_address_3(read_addresses[3]),
 //        .read_address_4(read_addresses[4]),
 //        .read_address_5(read_addresses[5]),
 //        .read_address_6(read_addresses[6]),
@@ -273,40 +242,46 @@ module chip (
         .state(state),
     );
 
-//    assign DATA_1 = data_outputs[0];
-    assign DATA_2 = data_outputs[0];
-//    assign DATA_3 = data_outputs[2];
-    assign DATA_4 = data_outputs[1];
+    assign DATA_1 = data_outputs[0];
+    assign DATA_2 = data_outputs[1];
+    assign DATA_3 = data_outputs[2];
+    assign DATA_4 = data_outputs[3];
 //    assign DATA_5 = data_outputs[4];
-    assign DATA_6 = data_outputs[2];
+//    assign DATA_6 = data_outputs[5];
 //    assign DATA_7 = data_outputs[6];
-//    assign DATA_8 = data_outputs[0];            // Fourth output mirrors the first
+//    assign DATA_8 = data_outputs[7];
 //    assign DATA_9 = data_outputs[8];
 //    assign DATA_10 = data_outputs[9];
 
-//    assign CLOCK_1 = clock_outputs[0];
-    assign CLOCK_2 = clock_outputs[0];
-//    assign CLOCK_3 = clock_outputs[2];
-    assign CLOCK_4 = clock_outputs[1];
+    assign CLOCK_1 = clock_outputs[0];
+    assign CLOCK_2 = clock_outputs[1];
+    assign CLOCK_3 = clock_outputs[2];
+    assign CLOCK_4 = clock_outputs[3];
 //    assign CLOCK_5 = clock_outputs[4];
-    assign CLOCK_6 = clock_outputs[2];
+//    assign CLOCK_6 = clock_outputs[5];
 //    assign CLOCK_7 = clock_outputs[6];
-//    assign CLOCK_8 = clock_outputs[0];
+//    assign CLOCK_8 = clock_outputs[7];
 //    assign CLOCK_9 = clock_outputs[8];
 //    assign CLOCK_10 = clock_outputs[9];
 
 
 //    assign DATA_1 = 0;
-    assign DATA_3 = 0;
+//    assign DATA_2 = 0;
+//    assign DATA_3 = 0;
+//    assign DATA_4 = 0;
     assign DATA_5 = 0;
+    assign DATA_6 = 0;
     assign DATA_7 = 0;
     assign DATA_8 = 0;
     assign DATA_9 = 0;
     assign DATA_10 = 0;
 
-    assign CLOCK_1 = 0;
-    assign CLOCK_3 = 0;
+//    assign CLOCK_1 = 0;
+//    assign CLOCK_2 = 0;
+//    assign CLOCK_3 = 0;
+//    assign CLOCK_4 = 0;
     assign CLOCK_5 = 0;
+    assign CLOCK_6 = 0;
     assign CLOCK_7 = 0;
     assign CLOCK_8 = 0;
     assign CLOCK_9 = 0;

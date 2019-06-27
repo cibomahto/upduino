@@ -18,7 +18,7 @@ module sram_bus #(
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_0,
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_1,
     input [(ADDRESS_BUS_WIDTH-1):0] read_address_2,
-//    input [(ADDRESS_BUS_WIDTH-1):0] read_address_3,
+    input [(ADDRESS_BUS_WIDTH-1):0] read_address_3,
 //    input [(ADDRESS_BUS_WIDTH-1):0] read_address_4,
 //    input [(ADDRESS_BUS_WIDTH-1):0] read_address_5,
 //    input [(ADDRESS_BUS_WIDTH-1):0] read_address_6,
@@ -42,7 +42,7 @@ module sram_bus #(
     assign read_addresses[0] = read_address_0;
     assign read_addresses[1] = read_address_1;
     assign read_addresses[2] = read_address_2;
-//    assign read_addresses[3] = read_address_3;
+    assign read_addresses[3] = read_address_3;
 //    assign read_addresses[4] = read_address_4;
 //    assign read_addresses[5] = read_address_5;
 //    assign read_addresses[6] = read_address_6;
@@ -65,7 +65,6 @@ module sram_bus #(
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
         .CHIPSELECT(cs_0),
-//        .CHIPSELECT(~ram_address[14]),
         .CLOCK(clk),
         .STANDBY(1'b0),
         .SLEEP(1'b0),
@@ -79,7 +78,6 @@ module sram_bus #(
         .MASKWREN(4'b1111),
         .WREN(ram_wren),
         .CHIPSELECT(cs_1),
-//        .CHIPSELECT(ram_address[14]),
         .CLOCK(clk),
         .STANDBY(1'b0),
         .SLEEP(1'b0),
