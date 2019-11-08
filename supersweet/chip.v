@@ -248,22 +248,22 @@ module chip (
 //    assign DATA_1 = data_outputs[0];
     assign DATA_2 = data_outputs[0];
 //    assign DATA_3 = data_outputs[2];
-    assign DATA_4 = data_outputs[1];
+    assign DATA_4 = data_outputs[0];
 //    assign DATA_5 = data_outputs[4];
-    assign DATA_6 = data_outputs[2];
+    assign DATA_6 = data_outputs[0];
 //    assign DATA_7 = data_outputs[6];
-//    assign DATA_8 = data_outputs[0];            // Fourth output mirrors the first
+    assign DATA_8 = data_outputs[0];
 //    assign DATA_9 = data_outputs[8];
 //    assign DATA_10 = data_outputs[9];
 
 //    assign CLOCK_1 = clock_outputs[0];
     assign CLOCK_2 = clock_outputs[0];
 //    assign CLOCK_3 = clock_outputs[2];
-    assign CLOCK_4 = clock_outputs[1];
+    assign CLOCK_4 = clock_outputs[0];
 //    assign CLOCK_5 = clock_outputs[4];
-    assign CLOCK_6 = clock_outputs[2];
+    assign CLOCK_6 = clock_outputs[0];
 //    assign CLOCK_7 = clock_outputs[6];
-//    assign CLOCK_8 = clock_outputs[0];
+    assign CLOCK_8 = clock_outputs[0];
 //    assign CLOCK_9 = clock_outputs[8];
 //    assign CLOCK_10 = clock_outputs[9];
 
@@ -272,7 +272,6 @@ module chip (
     assign DATA_3 = 0;
     assign DATA_5 = 0;
     assign DATA_7 = 0;
-    assign DATA_8 = 0;
     assign DATA_9 = 0;
     assign DATA_10 = 0;
 
@@ -280,7 +279,6 @@ module chip (
     assign CLOCK_3 = 0;
     assign CLOCK_5 = 0;
     assign CLOCK_7 = 0;
-    assign CLOCK_8 = 0;
     assign CLOCK_9 = 0;
     assign CLOCK_10 = 0;
 
